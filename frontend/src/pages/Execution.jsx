@@ -108,7 +108,7 @@ const Execution = () => {
 
     const handleWorkflowFailed = (data) => {
       if (data.executionId === id) {
-        setExecution(prev => ({ ...prev, status: 'failed' }));
+        setExecution(prev => ({ ...prev, status: 'failed', result: null, errorMessage: data.error }));
       }
     };
 
@@ -364,18 +364,48 @@ const Execution = () => {
                   animate={{ opacity: 1 }}
                   className="prose prose-invert max-w-none"
                 >
+                  {execution.result.includes('[MOCK') || execution.result.includes('mock mode') ? (
+                    <div className="flex items-center space-x-2 mb-4 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 w-fit">
+                      <Sparkles size={14} className="text-amber-400" />
+                      <span className="text-xs font-black text-amber-400 uppercase tracking-widest">Demo Mode — Mock Output</span>
+                    </div>
+                  ) : null}
                   <pre className="whitespace-pre-wrap font-mono text-[15px] text-slate-300 leading-relaxed bg-black/20 p-8 rounded-3xl border border-white/5">
                     {execution.result}
                   </pre>
+                </motion.div>
+              ) : execution.status === 'failed' ? (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="h-full min-h-[400px] flex flex-col items-center justify-center space-y-6"
+                >
+                  <div className="rounded-2xl bg-red-500/10 p-6">
+                    <XCircle size={40} className="text-red-400" />
+                  </div>
+                  <div className="text-center max-w-lg px-4">
+                    <p className="text-xl font-black text-white mb-3">Execution Failed</p>
+                    {execution.errorMessage ? (
+                      <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-5 text-left">
+                        <p className="text-sm font-bold text-red-300 leading-relaxed">{execution.errorMessage}</p>
+                        {execution.errorMessage.includes('OPENAI_MOCK_MODE') && (
+                          <p className="mt-3 text-xs font-mono text-red-400/70 bg-black/30 p-3 rounded-xl">
+                            {'# In your backend .env file:'}<br/>
+                            {'OPENAI_MOCK_MODE=true'}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-slate-500 font-medium">No output was generated. Check the step errors in the pipeline for details.</p>
+                    )}
+                  </div>
                 </motion.div>
               ) : (
                 <div className="h-full min-h-[400px] flex flex-col items-center justify-center text-slate-600">
                   <div className="rounded-2xl bg-white/5 p-6 mb-4">
                     <Circle size={40} className="opacity-20" />
                   </div>
-                  <p className="text-lg font-bold">
-                    {execution.status === 'failed' ? 'Operational Failure: No output data.' : 'Neural link active. Waiting for signal...'}
-                  </p>
+                  <p className="text-lg font-bold">Neural link active. Waiting for signal...</p>
                 </div>
               )}
             </div>
