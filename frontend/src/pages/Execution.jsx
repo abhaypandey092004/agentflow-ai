@@ -444,12 +444,10 @@ const Execution = () => {
                   animate={{ opacity: 1 }}
                   className="prose prose-invert max-w-none"
                 >
-                  {execution.result.includes('[MOCK') || execution.result.includes('mock mode') ? (
-                    <div className="flex items-center space-x-2 mb-4 px-4 py-2 rounded-xl bg-amber-500/10 border border-amber-500/20 w-fit">
-                      <Sparkles size={14} className="text-amber-400" />
-                      <span className="text-xs font-black text-amber-400 uppercase tracking-widest">Demo Mode — Mock Output</span>
-                    </div>
-                  ) : null}
+                  <div className="flex items-center space-x-2 mb-4 px-4 py-2 rounded-xl bg-primary-500/10 border border-primary-500/20 w-fit">
+                    <Sparkles size={14} className="text-primary-400" />
+                    <span className="text-xs font-black text-primary-400 uppercase tracking-widest">AI Generated Output</span>
+                  </div>
                   <pre className="whitespace-pre-wrap font-mono text-[15px] text-slate-300 leading-relaxed bg-black/20 p-8 rounded-3xl border border-white/5">
                     {execution.result}
                   </pre>
@@ -468,12 +466,6 @@ const Execution = () => {
                     {execution.errorMessage ? (
                       <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-5 text-left">
                         <p className="text-sm font-bold text-red-300 leading-relaxed">{execution.errorMessage}</p>
-                        {execution.errorMessage.includes('OPENAI_MOCK_MODE') && (
-                          <p className="mt-3 text-xs font-mono text-red-400/70 bg-black/30 p-3 rounded-xl">
-                            {'# In your backend .env file:'}<br/>
-                            {'OPENAI_MOCK_MODE=true'}
-                          </p>
-                        )}
                       </div>
                     ) : (
                       <p className="text-slate-500 font-medium">No output was generated. Check the step errors in the pipeline for details.</p>

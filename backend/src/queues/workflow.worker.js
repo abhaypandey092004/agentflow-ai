@@ -2,6 +2,7 @@ const { Worker } = require('bullmq');
 const redisConnection = require('../config/redis');
 const supabase = require('../config/supabase');
 const aiService = require('../services/ai.service');
+const { searchWeb } = require('../services/search.service');
 const { getIo } = require('../socket');
 
 const emitUpdate = (userId, event, payload) => {
@@ -62,18 +63,39 @@ const processWorkflow = async (job) => {
       try {
         // Execute AI task with timeout
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('AI execution timed out after 60 seconds')), 60000)
+          setTimeout(() => reject(new Error('Operation timed out after 60 seconds')), 60000)
         );
 
-        const result = await Promise.race([
-          aiService.executeStep(
-            step.type,
-            processedPrompt,
-            step.model,
-            previousOutput
-          ),
-          timeoutPromise
-        ]);
+        let result = '';
+
+        if (step.type === 'research') {
+          // 1. Perform real web search
+          const searchQuery = processedPrompt;
+          console.log(`[WORKER] Performing web search for: ${searchQuery}`);
+          const searchData = await searchWeb(searchQuery);
+
+          // 2. Pass search results to AI for structured analysis
+          result = await Promise.race([
+            aiService.executeStep(
+              'research',
+              `Analyze and structure the following research data based on this objective: ${processedPrompt}\n\nRESEARCH DATA:\n${searchData}`,
+              step.model,
+              previousOutput
+            ),
+            timeoutPromise
+          ]);
+        } else {
+          // Standard AI step
+          result = await Promise.race([
+            aiService.executeStep(
+              step.type,
+              processedPrompt,
+              step.model,
+              previousOutput
+            ),
+            timeoutPromise
+          ]);
+        }
 
         console.log(`[WORKER] Job ${job.id} | Step Completed: ${step.name}`);
 
