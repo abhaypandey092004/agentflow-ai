@@ -66,13 +66,18 @@ const Execution = () => {
           const newSteps = [...(prev.step_executions || [])];
           const stepIndex = newSteps.findIndex(s => s.id === data.stepExecutionId);
           if (stepIndex !== -1) {
-            // Step already in local state — just update its status
-            newSteps[stepIndex] = { ...newSteps[stepIndex], status: 'processing' };
+            // Step already in local state — just update its status and prompt
+            newSteps[stepIndex] = { 
+              ...newSteps[stepIndex], 
+              status: 'processing',
+              processedPrompt: data.processedPrompt 
+            };
           } else {
             // Step was just created in DB; append a placeholder so the UI shows it
             newSteps.push({
               id: data.stepExecutionId,
               status: 'processing',
+              processedPrompt: data.processedPrompt,
               workflow_steps: { name: 'Processing...', type: '' },
             });
           }
@@ -315,6 +320,14 @@ const Execution = () => {
                         <p className="text-[10px] font-black text-primary-500 uppercase tracking-widest mt-1">
                           {stepExec.workflow_steps?.type}
                         </p>
+                        {stepExec.processedPrompt && (
+                          <div className="mt-3 p-2 bg-black/40 rounded-lg border border-white/5">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Applied Prompt</p>
+                            <p className="text-[11px] text-slate-400 line-clamp-2 italic leading-relaxed">
+                              "{stepExec.processedPrompt}"
+                            </p>
+                          </div>
+                        )}
                       </div>
                       {stepExec.status === 'completed' && (
                         <CheckCircle2 size={16} className="text-emerald-400 opacity-50" />

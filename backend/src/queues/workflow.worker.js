@@ -14,8 +14,8 @@ const emitUpdate = (userId, event, payload) => {
 };
 
 const processWorkflow = async (job) => {
-  const { userId, executionId, workflowId, steps } = job.data;
-  let previousOutput = '';
+  const { userId, executionId, workflowId, steps, initialInput } = job.data;
+  let previousOutput = initialInput || '';
 
   console.log(`[WORKER] Starting Job ${job.id} | Execution: ${executionId}`);
 
@@ -45,7 +45,19 @@ const processWorkflow = async (job) => {
 
       if (stepCreateError) throw new Error(`Failed to create step execution: ${stepCreateError.message}`);
 
-      emitUpdate(userId, 'step_started', { executionId, stepExecutionId: stepExecution.id, stepId: step.id });
+      // Process template variables in prompt
+      const currentInput = previousOutput || '';
+      const processedPrompt = step.prompt
+        .replace(/{{input}}/g, currentInput)
+        .replace(/{{previous_output}}/g, currentInput)
+        .replace(/{{step_output}}/g, currentInput);
+
+      emitUpdate(userId, 'step_started', { 
+        executionId, 
+        stepExecutionId: stepExecution.id, 
+        stepId: step.id,
+        processedPrompt
+      });
 
       try {
         // Execute AI task with timeout
@@ -56,7 +68,7 @@ const processWorkflow = async (job) => {
         const result = await Promise.race([
           aiService.executeStep(
             step.type,
-            step.prompt,
+            processedPrompt,
             step.model,
             previousOutput
           ),

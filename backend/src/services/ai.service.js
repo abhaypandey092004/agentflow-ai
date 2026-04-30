@@ -12,8 +12,8 @@ const executeStep = async (stepType, prompt, model, previousOutput = '') => {
     return `
 ## Generated Response (Mock)
 
-User asked:
-"${userPrompt}"
+### Applied Prompt:
+> ${userPrompt}
 
 ### Response:
 

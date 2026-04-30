@@ -7,8 +7,8 @@ const aiService = require('./ai.service');
 // Runs in the same Node.js process as the HTTP server so getIo() is always
 // available. Called via setImmediate so the HTTP response is sent first.
 
-const runWorkflowInline = async (userId, executionId, workflowId, steps) => {
-  let previousOutput = '';
+const runWorkflowInline = async (userId, executionId, workflowId, steps, initialInput = '') => {
+  let previousOutput = initialInput || '';
 
   // Import socket lazily to avoid circular-require issues at module load time
   let emitUpdate = () => {};
@@ -51,10 +51,18 @@ const runWorkflowInline = async (userId, executionId, workflowId, steps) => {
         throw new Error(`Failed to create step execution: ${stepCreateError.message}`);
       }
 
+      // Process template variables in prompt
+      const currentInput = previousOutput || '';
+      const processedPrompt = step.prompt
+        .replace(/{{input}}/g, currentInput)
+        .replace(/{{previous_output}}/g, currentInput)
+        .replace(/{{step_output}}/g, currentInput);
+
       emitUpdate('step_started', {
         executionId,
         stepExecutionId: stepExecution.id,
         stepId: step.id,
+        processedPrompt,
       });
 
       try {
@@ -64,7 +72,7 @@ const runWorkflowInline = async (userId, executionId, workflowId, steps) => {
         );
 
         const result = await Promise.race([
-          aiService.executeStep(step.type, step.prompt, step.model, previousOutput),
+          aiService.executeStep(step.type, processedPrompt, step.model, previousOutput),
           timeoutPromise,
         ]);
 
@@ -134,7 +142,7 @@ const runWorkflowInline = async (userId, executionId, workflowId, steps) => {
 
 // ─── Public API ────────────────────────────────────────────────────────────────
 
-const runWorkflow = async (userId, workflowId) => {
+const runWorkflow = async (userId, workflowId, initialInput = '') => {
   // 1. Fetch workflow and its steps
   const { data: workflow, error } = await supabase
     .from('workflows')
@@ -183,7 +191,7 @@ const runWorkflow = async (userId, workflowId) => {
   if (env.openai.mockMode) {
     console.log(`[MOCK-RUNNER] Mock mode active — bypassing BullMQ for execution: ${execution.id}`);
     // setImmediate lets the HTTP response return before processing starts
-    setImmediate(() => runWorkflowInline(userId, execution.id, workflowId, steps));
+    setImmediate(() => runWorkflowInline(userId, execution.id, workflowId, steps, initialInput));
     return execution;
   }
 
@@ -194,6 +202,7 @@ const runWorkflow = async (userId, workflowId) => {
       executionId: execution.id,
       workflowId,
       steps,
+      initialInput
     });
   } catch (queueError) {
     console.error('Failed to add job to queue:', queueError);
