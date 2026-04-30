@@ -5,6 +5,22 @@ import { motion } from 'framer-motion';
 import AgentModal from '../components/AgentModal';
 import api from '../lib/api';
 
+// Defined outside component so React doesn't recreate it as a new type each render
+const AgentSkeleton = () => (
+  <div className="glass-card flex flex-col rounded-2xl p-6 shimmer">
+    <div className="flex items-start justify-between mb-4">
+      <div className="h-12 w-12 bg-white/5 rounded-2xl"></div>
+      <div className="flex space-x-2">
+        <div className="h-8 w-8 bg-white/5 rounded-lg"></div>
+        <div className="h-8 w-8 bg-white/5 rounded-lg"></div>
+      </div>
+    </div>
+    <div className="h-6 w-3/4 bg-white/5 rounded-lg mb-2"></div>
+    <div className="h-4 w-full bg-white/5 rounded-lg mb-1"></div>
+    <div className="h-4 w-5/6 bg-white/5 rounded-lg"></div>
+  </div>
+);
+
 const Agents = () => {
   const { agents, loading, fetchAgents, addAgent, updateAgent, removeAgent } = useDataStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -14,20 +30,8 @@ const Agents = () => {
     fetchAgents();
   }, [fetchAgents]);
 
-  const AgentSkeleton = () => (
-    <div className="glass-card flex flex-col rounded-2xl p-6 shimmer">
-      <div className="flex items-start justify-between mb-4">
-        <div className="h-12 w-12 bg-white/5 rounded-2xl"></div>
-        <div className="flex space-x-2">
-          <div className="h-8 w-8 bg-white/5 rounded-lg"></div>
-          <div className="h-8 w-8 bg-white/5 rounded-lg"></div>
-        </div>
-      </div>
-      <div className="h-6 w-3/4 bg-white/5 rounded-lg mb-2"></div>
-      <div className="h-4 w-full bg-white/5 rounded-lg mb-1"></div>
-      <div className="h-4 w-5/6 bg-white/5 rounded-lg"></div>
-    </div>
-  );
+  // All derived values computed before any conditional return
+  const isInitialLoading = loading.agents && agents.length === 0;
 
   const handleCreate = () => {
     setEditingAgent(null);
@@ -57,8 +61,6 @@ const Agents = () => {
       addAgent(savedAgent);
     }
   };
-
-  const isInitialLoading = loading.agents && agents.length === 0;
 
   if (isInitialLoading) {
     return (

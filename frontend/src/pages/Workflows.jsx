@@ -5,6 +5,24 @@ import { motion } from 'framer-motion';
 import { GitMerge, Plus, Edit2, Trash2, Play, ChevronRight } from 'lucide-react';
 import api from '../lib/api';
 
+// Defined outside component to prevent React from treating it as a new type each render
+const WorkflowSkeleton = () => (
+  <div className="glass-card flex flex-col rounded-3xl p-6 shimmer">
+    <div className="flex items-start justify-between mb-4">
+      <div className="flex items-center space-x-3">
+        <div className="h-12 w-12 bg-white/5 rounded-2xl"></div>
+        <div className="space-y-2">
+          <div className="h-5 w-32 bg-white/5 rounded-lg"></div>
+          <div className="h-3 w-24 bg-white/5 rounded-lg"></div>
+        </div>
+      </div>
+      <div className="h-10 w-20 bg-white/5 rounded-xl"></div>
+    </div>
+    <div className="h-4 w-full bg-white/5 rounded-lg mb-1"></div>
+    <div className="h-4 w-5/6 bg-white/5 rounded-lg"></div>
+  </div>
+);
+
 const Workflows = () => {
   const { workflows, loading, fetchWorkflows, removeWorkflow } = useDataStore();
   const [runningId, setRunningId] = useState(null);
@@ -14,22 +32,7 @@ const Workflows = () => {
     fetchWorkflows();
   }, [fetchWorkflows]);
 
-  const WorkflowSkeleton = () => (
-    <div className="glass-card flex flex-col rounded-3xl p-6 shimmer">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          <div className="h-12 w-12 bg-white/5 rounded-2xl"></div>
-          <div className="space-y-2">
-            <div className="h-5 w-32 bg-white/5 rounded-lg"></div>
-            <div className="h-3 w-24 bg-white/5 rounded-lg"></div>
-          </div>
-        </div>
-        <div className="h-10 w-20 bg-white/5 rounded-xl"></div>
-      </div>
-      <div className="h-4 w-full bg-white/5 rounded-lg mb-1"></div>
-      <div className="h-4 w-5/6 bg-white/5 rounded-lg"></div>
-    </div>
-  );
+  const isInitialLoading = loading.workflows && workflows.length === 0;
 
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this workflow?')) return;
@@ -55,7 +58,6 @@ const Workflows = () => {
     }
   };
 
-  const isInitialLoading = loading.workflows && workflows.length === 0;
 
   if (isInitialLoading) {
     return (

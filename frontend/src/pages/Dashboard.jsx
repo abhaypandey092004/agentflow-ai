@@ -36,6 +36,28 @@ const AnimatedNumber = ({ value }) => {
   return <span>{displayValue}</span>;
 };
 
+const StatSkeleton = () => (
+  <div className="glass-card rounded-2xl p-6 shimmer">
+    <div className="flex items-center justify-between">
+      <div className="space-y-3">
+        <div className="h-4 w-24 bg-white/5 rounded"></div>
+        <div className="h-8 w-12 bg-white/5 rounded"></div>
+      </div>
+      <div className="h-12 w-12 bg-white/5 rounded-2xl"></div>
+    </div>
+  </div>
+);
+
+const ExecutionSkeleton = () => (
+  <div className="flex items-center justify-between p-6 shimmer">
+    <div className="space-y-2">
+      <div className="h-5 w-48 bg-white/5 rounded"></div>
+      <div className="h-4 w-32 bg-white/5 rounded"></div>
+    </div>
+    <div className="h-6 w-20 bg-white/5 rounded-full"></div>
+  </div>
+);
+
 const Dashboard = () => {
   const profile = useAuthStore(state => state.profile);
   
@@ -49,34 +71,15 @@ const Dashboard = () => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  // Memoize derived data
+  // Memoize derived data — ALL hooks must come before any conditional return
   const recentExecutions = React.useMemo(() => executions.slice(0, 5), [executions]);
   const isInitialLoading = React.useMemo(() => loading.dashboard && executions.length === 0, [loading.dashboard, executions.length]);
+  const statCards = React.useMemo(() => [
+    { name: 'Active Agents', value: stats.agents, icon: Bot, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+    { name: 'Workflows', value: stats.workflows, icon: GitMerge, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+    { name: 'Executions', value: stats.executions, icon: Activity, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+  ], [stats.agents, stats.workflows, stats.executions]);
 
-  const StatSkeleton = () => (
-    <div className="glass-card rounded-2xl p-6 shimmer">
-      <div className="flex items-center justify-between">
-        <div className="space-y-3">
-          <div className="h-4 w-24 bg-white/5 rounded"></div>
-          <div className="h-8 w-12 bg-white/5 rounded"></div>
-        </div>
-        <div className="h-12 w-12 bg-white/5 rounded-2xl"></div>
-      </div>
-    </div>
-  );
-
-  const ExecutionSkeleton = () => (
-    <div className="flex items-center justify-between p-6 shimmer">
-      <div className="space-y-2">
-        <div className="h-5 w-48 bg-white/5 rounded"></div>
-        <div className="h-4 w-32 bg-white/5 rounded"></div>
-      </div>
-      <div className="h-6 w-20 bg-white/5 rounded-full"></div>
-    </div>
-  );
-
-  const isInitialLoadingResult = isInitialLoading; // just to keep the structure if needed, or I can just delete them.
-  
   if (isInitialLoading) {
     return (
       <div className="space-y-10">
@@ -97,12 +100,6 @@ const Dashboard = () => {
       </div>
     );
   }
-
-  const statCards = React.useMemo(() => [
-    { name: 'Active Agents', value: stats.agents, icon: Bot, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-    { name: 'Workflows', value: stats.workflows, icon: GitMerge, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-    { name: 'Executions', value: stats.executions, icon: Activity, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-  ], [stats.agents, stats.workflows, stats.executions]);
 
   return (
     <div className="space-y-10">

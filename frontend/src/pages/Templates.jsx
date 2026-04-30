@@ -4,6 +4,26 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, Copy, CheckCircle2, Zap, ArrowRight, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+// Defined outside component to prevent React from treating it as a new type each render
+const TemplateSkeleton = () => (
+  <div className="glass-card flex flex-col rounded-[2rem] p-8 shimmer">
+    <div className="flex items-start justify-between mb-6">
+      <div className="flex items-center space-x-4">
+        <div className="h-14 w-14 bg-white/5 rounded-2xl"></div>
+        <div className="space-y-2">
+          <div className="h-6 w-40 bg-white/5 rounded-lg"></div>
+          <div className="h-4 w-20 bg-white/5 rounded-lg"></div>
+        </div>
+      </div>
+      <div className="h-10 w-24 bg-white/5 rounded-xl"></div>
+    </div>
+    <div className="h-4 w-full bg-white/5 rounded-lg mb-4"></div>
+    <div className="h-4 w-2/3 bg-white/5 rounded-lg mb-8"></div>
+    <div className="h-32 bg-white/5 rounded-[1.5rem]"></div>
+    <div className="mt-8 h-12 w-full bg-white/5 rounded-xl"></div>
+  </div>
+);
+
 const Templates = () => {
   const templates = useDataStore(state => state.templates);
   const loading = useDataStore(state => state.loading);
@@ -18,25 +38,6 @@ const Templates = () => {
 
   const isInitialLoading = useMemo(() => loading.templates && templates.length === 0, [loading.templates, templates.length]);
 
-  const TemplateSkeleton = () => (
-    <div className="glass-card flex flex-col rounded-[2rem] p-8 shimmer">
-      <div className="flex items-start justify-between mb-6">
-        <div className="flex items-center space-x-4">
-          <div className="h-14 w-14 bg-white/5 rounded-2xl"></div>
-          <div className="space-y-2">
-            <div className="h-6 w-40 bg-white/5 rounded-lg"></div>
-            <div className="h-4 w-20 bg-white/5 rounded-lg"></div>
-          </div>
-        </div>
-        <div className="h-10 w-24 bg-white/5 rounded-xl"></div>
-      </div>
-      <div className="h-4 w-full bg-white/5 rounded-lg mb-4"></div>
-      <div className="h-4 w-2/3 bg-white/5 rounded-lg mb-8"></div>
-      <div className="h-32 bg-white/5 rounded-[1.5rem]"></div>
-      <div className="mt-8 h-12 w-full bg-white/5 rounded-xl"></div>
-    </div>
-  );
-
   const handleCopy = (id, prompt) => {
     navigator.clipboard.writeText(prompt);
     setCopiedId(id);
@@ -47,8 +48,6 @@ const Templates = () => {
     // Navigate to workflow builder and pass the prompt via state
     navigate('/workflows/builder', { state: { initialPrompt: template.prompt, templateName: template.name } });
   };
-
-
 
   if (isInitialLoading) {
     return (

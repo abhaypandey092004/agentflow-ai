@@ -5,6 +5,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
 import { UploadCloud, File, Trash2, Eye, X, Copy, CheckCircle2 } from 'lucide-react';
 
+const DocumentSkeleton = () => (
+  <div className="glass-card flex flex-col rounded-3xl p-6 shimmer">
+    <div className="flex items-start justify-between mb-4">
+      <div className="h-12 w-12 bg-white/5 rounded-2xl"></div>
+      <div className="flex space-x-2">
+        <div className="h-8 w-8 bg-white/5 rounded-lg"></div>
+        <div className="h-8 w-8 bg-white/5 rounded-lg"></div>
+      </div>
+    </div>
+    <div className="h-4 w-3/4 bg-white/5 rounded-lg mb-2"></div>
+    <div className="h-3 w-1/2 bg-white/5 rounded-lg"></div>
+  </div>
+);
+
 const Documents = () => {
   const { documents, loading, fetchDocuments, removeDocument } = useDataStore();
   const [uploading, setUploading] = useState(false);
@@ -16,20 +30,6 @@ const Documents = () => {
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
-
-  const DocumentSkeleton = () => (
-    <div className="glass-card flex flex-col rounded-3xl p-6 shimmer">
-      <div className="flex items-start justify-between mb-4">
-        <div className="h-12 w-12 bg-white/5 rounded-2xl"></div>
-        <div className="flex space-x-2">
-          <div className="h-8 w-8 bg-white/5 rounded-lg"></div>
-          <div className="h-8 w-8 bg-white/5 rounded-lg"></div>
-        </div>
-      </div>
-      <div className="h-4 w-3/4 bg-white/5 rounded-lg mb-2"></div>
-      <div className="h-3 w-1/2 bg-white/5 rounded-lg"></div>
-    </div>
-  );
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];

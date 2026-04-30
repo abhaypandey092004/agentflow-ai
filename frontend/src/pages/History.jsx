@@ -4,6 +4,24 @@ import { useDataStore } from '../store/useDataStore';
 import { motion } from 'framer-motion';
 import { History as HistoryIcon, Clock, ArrowRight, ExternalLink } from 'lucide-react';
 
+// Defined outside component to prevent React from treating it as a new type each render
+const TableSkeleton = () => (
+  <div className="glass-card rounded-3xl overflow-hidden shimmer">
+    <div className="bg-white/5 h-14"></div>
+    <div className="divide-y divide-white/5">
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="px-8 py-5 flex justify-between items-center">
+          <div className="h-5 w-1/4 bg-white/5 rounded-lg"></div>
+          <div className="h-5 w-1/6 bg-white/5 rounded-lg"></div>
+          <div className="h-7 w-24 bg-white/5 rounded-full"></div>
+          <div className="h-5 w-1/4 bg-white/5 rounded-lg"></div>
+          <div className="h-5 w-20 bg-white/5 rounded-lg"></div>
+        </div>
+      ))}
+    </div>
+  </div>
+);
+
 const History = () => {
   const executions = useDataStore(state => state.executions);
   const loading = useDataStore(state => state.loading);
@@ -14,25 +32,6 @@ const History = () => {
   }, [fetchExecutions]);
 
   const isInitialLoading = useMemo(() => loading.executions && executions.length === 0, [loading.executions, executions.length]);
-
-  const TableSkeleton = () => (
-    <div className="glass-card rounded-3xl overflow-hidden shimmer">
-      <div className="bg-white/5 h-14"></div>
-      <div className="divide-y divide-white/5">
-        {[...Array(6)].map((_, i) => (
-          <div key={i} className="px-8 py-5 flex justify-between items-center">
-            <div className="h-5 w-1/4 bg-white/5 rounded-lg"></div>
-            <div className="h-5 w-1/6 bg-white/5 rounded-lg"></div>
-            <div className="h-7 w-24 bg-white/5 rounded-full"></div>
-            <div className="h-5 w-1/4 bg-white/5 rounded-lg"></div>
-            <div className="h-5 w-20 bg-white/5 rounded-lg"></div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-
-
 
   if (isInitialLoading) {
     return (
