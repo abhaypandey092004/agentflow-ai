@@ -22,6 +22,7 @@ const Execution = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [exporting, setExporting] = useState(false);
+  const [timedOut, setTimedOut] = useState(false);
 
   const executionRef = React.useRef(execution);
   useEffect(() => {
@@ -62,10 +63,18 @@ const Execution = () => {
       if (data.executionId === id) {
         setExecution(prev => {
           if (!prev) return prev;
-          const newSteps = [...prev.step_executions];
+          const newSteps = [...(prev.step_executions || [])];
           const stepIndex = newSteps.findIndex(s => s.id === data.stepExecutionId);
           if (stepIndex !== -1) {
+            // Step already in local state — just update its status
             newSteps[stepIndex] = { ...newSteps[stepIndex], status: 'processing' };
+          } else {
+            // Step was just created in DB; append a placeholder so the UI shows it
+            newSteps.push({
+              id: data.stepExecutionId,
+              status: 'processing',
+              workflow_steps: { name: 'Processing...', type: '' },
+            });
           }
           return { ...prev, step_executions: newSteps };
         });
@@ -128,6 +137,45 @@ const Execution = () => {
       socket.off('workflow_failed', handleWorkflowFailed);
     };
   }, [id]);
+
+  // ── Polling fallback ────────────────────────────────────────────────────────
+  // If socket events are missed (BullMQ delay, socket disconnect, etc.) this
+  // re-fetches from the API every 3 s until the execution resolves.
+  useEffect(() => {
+    const isActive = execution?.status === 'pending' || execution?.status === 'processing';
+    if (!isActive) return;
+
+    const startedAt = Date.now();
+
+    const interval = setInterval(async () => {
+      // Safety: if stuck for >35 seconds, stop polling and show a timeout UI
+      if (Date.now() - startedAt > 35_000) {
+        clearInterval(interval);
+        setTimedOut(true);
+        return;
+      }
+
+      try {
+        const { data } = await api.get(`/executions/${id}`);
+        // Only update if something actually changed to avoid unnecessary re-renders
+        if (
+          data.status !== executionRef.current?.status ||
+          data.result !== executionRef.current?.result ||
+          (data.step_executions?.length ?? 0) !== (executionRef.current?.step_executions?.length ?? 0)
+        ) {
+          setExecution(data);
+        }
+        // Stop polling once execution has resolved
+        if (data.status !== 'pending' && data.status !== 'processing') {
+          clearInterval(interval);
+        }
+      } catch (err) {
+        console.error('[Polling] Failed to fetch execution:', err);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [id, execution?.status]);
 
   const handleExport = async (format) => {
     if (!execution?.result) return;
@@ -334,7 +382,7 @@ const Execution = () => {
             </div>
 
             <div className="flex-1">
-              {execution.status === 'processing' ? (
+              {(execution.status === 'processing' || execution.status === 'pending') && !timedOut ? (
                 <div className="h-full min-h-[400px] flex flex-col items-center justify-center space-y-6">
                   <div className="relative">
                     <motion.div 
@@ -356,6 +404,24 @@ const Execution = () => {
                   <div className="text-center">
                     <p className="text-xl font-black text-white mb-2">Synthesizing Data...</p>
                     <p className="text-slate-500 font-medium animate-pulse">Large Language Models are processing the neural pipeline.</p>
+                  </div>
+                </div>
+              ) : timedOut ? (
+                <div className="h-full min-h-[400px] flex flex-col items-center justify-center space-y-6">
+                  <div className="rounded-2xl bg-amber-500/10 p-6">
+                    <Clock size={40} className="text-amber-400" />
+                  </div>
+                  <div className="text-center max-w-lg px-4">
+                    <p className="text-xl font-black text-white mb-3">Execution Timed Out</p>
+                    <p className="text-slate-400 font-medium mb-6">The workflow has been running longer than expected. It may still be processing in the background.</p>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => window.location.reload()}
+                      className="px-6 py-3 rounded-xl bg-primary-500/20 border border-primary-500/30 text-primary-400 font-black text-sm hover:bg-primary-500/30 transition-all"
+                    >
+                      Refresh Page
+                    </motion.button>
                   </div>
                 </div>
               ) : execution.result ? (
