@@ -244,19 +244,21 @@ const WorkflowBuilder = () => {
                 placeholder="Pipeline Name"
               />
             </div>
-            <div className="group">
-              <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2 group-focus-within:text-primary-400 transition-colors">AI Architect</label>
-              <select
-                value={workflow.agent_id}
-                onChange={(e) => setWorkflow({ ...workflow, agent_id: e.target.value })}
-                className="w-full rounded-2xl border border-white/5 bg-black/20 px-5 py-3.5 text-white focus:border-primary-500/50 focus:outline-none focus:ring-1 focus:ring-primary-500/20 transition-all appearance-none font-bold cursor-pointer"
-              >
-                <option value="" disabled>Select an agent...</option>
-                {agents.map(a => (
-                  <option key={a.id} value={a.id}>{a.name}</option>
-                ))}
-              </select>
-            </div>
+            {!urlAgentId && (
+              <div className="group">
+                <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2 group-focus-within:text-primary-400 transition-colors">AI Architect</label>
+                <select
+                  value={workflow.agent_id}
+                  onChange={(e) => setWorkflow({ ...workflow, agent_id: e.target.value })}
+                  className="w-full rounded-2xl border border-white/5 bg-black/20 px-5 py-3.5 text-white focus:border-primary-500/50 focus:outline-none focus:ring-1 focus:ring-primary-500/20 transition-all appearance-none font-bold cursor-pointer"
+                >
+                  <option value="" disabled>Select an agent...</option>
+                  {agents.map(a => (
+                    <option key={a.id} value={a.id}>{a.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           <div className="group">
             <label className="block text-xs font-black uppercase tracking-widest text-slate-500 mb-2 group-focus-within:text-primary-400 transition-colors">Context Description</label>
