@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
 import { Bot, Plus, Edit2, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -22,6 +23,7 @@ const AgentSkeleton = () => (
 );
 
 const Agents = () => {
+  const navigate = useNavigate();
   const { agents, loading, fetchAgents, addAgent, updateAgent, removeAgent } = useDataStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingAgent, setEditingAgent] = useState(null);
@@ -57,8 +59,11 @@ const Agents = () => {
   const handleSave = (savedAgent) => {
     if (editingAgent) {
       updateAgent(savedAgent);
+      alert('Agent updated successfully.');
     } else {
       addAgent(savedAgent);
+      alert('Agent created successfully. Now build workflow.');
+      navigate(`/workflows/builder?agentId=${savedAgent.id}`);
     }
   };
 

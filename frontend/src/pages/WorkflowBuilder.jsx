@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { useNavigate, useParams, useLocation, useSearchParams } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
 import { motion, Reorder } from 'framer-motion';
 import api from '../lib/api';
@@ -18,6 +18,8 @@ const WorkflowBuilder = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const urlAgentId = searchParams.get('agentId');
   const isEditing = Boolean(id);
   const initialData = location.state || {};
 
@@ -29,7 +31,7 @@ const WorkflowBuilder = () => {
   const [workflow, setWorkflow] = useState({
     name: initialData.templateName || '',
     description: '',
-    agent_id: '',
+    agent_id: urlAgentId || '',
     steps: [
       { 
         name: 'Initial Step', 
@@ -72,6 +74,8 @@ const WorkflowBuilder = () => {
       setWorkflow(prev => ({ ...prev, agent_id: agents[0].id }));
     }
   }, [agents, isEditing, workflow.agent_id]);
+
+  const selectedAgent = agents.find(a => a.id === workflow.agent_id);
 
   const handleStepChange = (index, field, value) => {
     const newSteps = [...workflow.steps];
@@ -161,6 +165,17 @@ const WorkflowBuilder = () => {
 
   return (
     <div className="max-w-4xl mx-auto pb-20 space-y-8">
+      {selectedAgent && !isEditing && urlAgentId && (
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-2xl bg-primary-500/10 border border-primary-500/20 p-4 flex items-center space-x-3 text-primary-400"
+        >
+          <Sparkles size={20} />
+          <span className="font-bold text-sm">Building workflow for: {selectedAgent.name}</span>
+        </motion.div>
+      )}
+
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <motion.button 
