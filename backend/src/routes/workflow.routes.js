@@ -13,6 +13,18 @@ router.get('/:id', workflowController.getWorkflowById);
 router.post('/', validate(createWorkflowSchema), workflowController.createWorkflow);
 router.put('/:id', validate(updateWorkflowSchema), workflowController.updateWorkflow);
 router.delete('/:id', workflowController.deleteWorkflow);
-router.post('/:id/run', workflowController.runWorkflowEndpoint);
+const rateLimit = require('express-rate-limit');
+
+// Rate limiting for workflow execution (AI calls are expensive)
+const runLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 runs per window
+  message: { error: 'Too many executions. Please wait 15 minutes before trying again.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user.id // Rate limit per user, not just IP
+});
+
+router.post('/:id/run', runLimiter, workflowController.runWorkflowEndpoint);
 
 module.exports = router;

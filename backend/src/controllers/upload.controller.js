@@ -119,7 +119,55 @@ const parseDocument = async (req, res, next) => {
   }
 };
 
+const deleteFile = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // 1. Verify ownership and get storage path
+    const { data: file, error: fetchError } = await supabase
+      .from('uploaded_files')
+      .select('storage_path, file_name')
+      .eq('id', id)
+      .eq('user_id', req.user.id)
+      .single();
+
+    if (fetchError || !file) {
+      return res.status(404).json({ error: 'File not found or access denied' });
+    }
+
+    // 2. Delete from Supabase Storage
+    const { error: storageError } = await supabase.storage
+      .from('documents')
+      .remove([file.storage_path]);
+
+    if (storageError) {
+      console.error('Storage deletion failed:', storageError);
+      // Continue anyway to clean up database
+    }
+
+    // 3. Delete from database
+    const { error: dbError } = await supabase
+      .from('uploaded_files')
+      .delete()
+      .eq('id', id);
+
+    if (dbError) throw dbError;
+
+    // 4. Log audit
+    await supabase.from('audit_logs').insert({
+      user_id: req.user.id,
+      action: 'document_deleted',
+      details: { fileId: id, fileName: file.file_name }
+    });
+
+    res.json({ message: 'File deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   uploadFile,
-  parseDocument
+  parseDocument,
+  deleteFile
 };

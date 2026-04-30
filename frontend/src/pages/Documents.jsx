@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { supabase } from '../lib/supabase';
 import { useDataStore } from '../store/useDataStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import api from '../lib/api';
+import toast from 'react-hot-toast';
 import { UploadCloud, File, Trash2, Eye, X, Copy, CheckCircle2 } from 'lucide-react';
 
 const DocumentSkeleton = () => (
@@ -50,47 +50,40 @@ const Documents = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       fetchDocuments(true);
+      toast.success('Document uploaded successfully');
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
       console.error('Upload failed:', err);
-      alert('Failed to upload document');
+      toast.error('Failed to upload document. Max size 5MB.');
     } finally {
       setUploading(false);
     }
   };
 
-  const handleDelete = async (id, storagePath) => {
-    if (!window.confirm('Delete this document?')) return;
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this document? This action cannot be undone.')) return;
     
+    const t = toast.loading('Purging knowledge asset...');
     try {
-      const { error: storageError } = await supabase.storage
-        .from('documents')
-        .remove([storagePath]);
-        
-      if (storageError) throw storageError;
-
-      const { error: dbError } = await supabase
-        .from('uploaded_files')
-        .delete()
-        .eq('id', id);
-        
-      if (dbError) throw dbError;
-
+      await api.delete(`/uploads/${id}`);
       removeDocument(id);
+      toast.success('Document deleted successfully', { id: t });
     } catch (err) {
       console.error('Delete failed:', err);
-      alert('Failed to delete document');
+      toast.error('Failed to delete document. Access denied or server error.', { id: t });
     }
   };
 
   const handleParse = async (id) => {
+    const t = toast.loading('Extracting intelligence...');
     try {
       setParsing(true);
       const { data } = await api.get(`/uploads/${id}/parse`);
       setParsedText(data.text);
+      toast.success('Text extracted successfully', { id: t });
     } catch (err) {
       console.error('Parse failed:', err);
-      alert('Failed to extract text from document');
+      toast.error('Failed to extract text from document', { id: t });
     } finally {
       setParsing(false);
     }
@@ -194,7 +187,7 @@ const Documents = () => {
                     <Eye size={18} />
                   </button>
                   <button 
-                    onClick={() => handleDelete(doc.id, doc.storage_path)}
+                    onClick={() => handleDelete(doc.id)}
                     className="rounded-xl p-2 text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all"
                   >
                     <Trash2 size={18} />

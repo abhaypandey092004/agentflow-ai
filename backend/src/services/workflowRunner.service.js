@@ -7,6 +7,16 @@ const { searchWeb } = require('./search.service');
  * Public API to initiate a workflow run
  */
 const runWorkflow = async (userId, workflowId, initialInput = '') => {
+  // 0. Security Validation
+  const trimmedInput = initialInput.trim();
+  if (trimmedInput.length > 4000) {
+    throw new Error('Input too long. Max 4000 characters allowed.');
+  }
+
+  // Basic sanitization
+  const sanitizedInput = trimmedInput.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gmi, '')
+                                     .replace(/<[^>]*>?/gm, '');
+
   // 1. Fetch workflow and its steps
   const { data: workflow, error } = await supabase
     .from('workflows')
@@ -27,11 +37,14 @@ const runWorkflow = async (userId, workflowId, initialInput = '') => {
     throw new Error('Workflow has no steps to execute');
   }
 
+  if (workflow.workflow_steps.length > 10) {
+    throw new Error('Workflow exceeds maximum step limit (10).');
+  }
+
   // Sort steps by order
   const steps = workflow.workflow_steps.sort((a, b) => a.order_number - b.order_number);
 
   // 2. Create execution record
-  // Note: Attempting to store 'input'. If column doesn't exist, we fallback to just result update.
   const { data: execution, error: executionError } = await supabase
     .from('workflow_executions')
     .insert({
@@ -53,7 +66,7 @@ const runWorkflow = async (userId, workflowId, initialInput = '') => {
       executionId: execution.id,
       workflowId,
       steps,
-      initialInput
+      initialInput: sanitizedInput
     });
   } catch (queueError) {
     console.error('Failed to add job to queue:', queueError);

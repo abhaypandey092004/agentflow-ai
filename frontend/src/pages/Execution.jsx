@@ -189,7 +189,7 @@ const Execution = () => {
     try {
       const response = await api.post(
         `/export/${format}`,
-        { content: execution.result },
+        { executionId: id },
         { responseType: 'blob' }
       );
       
