@@ -47,7 +47,7 @@ function App() {
         <Route element={<MainLayout />}>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/builder" element={<Agents />} />
+          <Route path="/workflows" element={<Workflows />} />
           <Route path="/workflows/builder" element={<WorkflowBuilder />} />
           <Route path="/workflows/builder/:id" element={<WorkflowBuilder />} />
           <Route path="/history" element={<History />} />

@@ -198,7 +198,7 @@ const WorkflowBuilder = () => {
           whileTap={{ scale: 0.98 }}
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center space-x-2 rounded-xl bg-primary-600 px-6 py-3 text-sm font-black text-white hover:bg-primary-500 transition-all shadow-lg shadow-primary-500/20 disabled:opacity-50"
+          className="flex items-center space-x-2 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 text-sm font-black text-white hover:from-blue-500 hover:to-purple-500 transition-all shadow-lg shadow-purple-500/25 disabled:opacity-50"
         >
           {saving ? (
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />

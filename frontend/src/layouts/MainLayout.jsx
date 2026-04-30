@@ -27,7 +27,7 @@ const MainLayout = () => {
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Builder', path: '/builder', icon: GitMerge },
+    { name: 'Workflows', path: '/workflows', icon: GitMerge },
     { name: 'Execution History', path: '/history', icon: History },
     { name: 'Templates', path: '/templates', icon: FileText },
     { name: 'Documents', path: '/documents', icon: UploadCloud },
