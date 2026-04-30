@@ -1,13 +1,17 @@
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
-const env = require("./config/env");
 const rateLimiter = require("./middleware/rateLimiter");
 const errorMiddleware = require("./middleware/errorMiddleware");
 
 const app = express();
 
-const allowedOrigins = env.cors.origins;
+const allowedOrigins = (process.env.FRONTEND_URLS || "")
+  .split(",")
+  .map((url) => url.trim())
+  .filter(Boolean);
+
+console.log("Allowed Origins:", allowedOrigins);
 
 // Security middlewares
 app.use(helmet());
@@ -15,18 +19,20 @@ app.use(helmet());
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.some(o => origin.startsWith(o))) {
+      if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
+
+      console.error("Blocked Origin:", origin);
       return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
+    credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true
+    allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
 
-// ✅ FIX: OPTIONS request manually handle karo
+// Handle OPTIONS preflight
 app.use((req, res, next) => {
   if (req.method === "OPTIONS") {
     return res.sendStatus(204);
@@ -38,39 +44,14 @@ app.use((req, res, next) => {
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Apply rate limiter
+// Rate limiter
 app.use("/api", rateLimiter);
 
 // Health check
-app.get("/api/health", async (req, res) => {
-  const redisConnection = require('./config/redis');
-  const supabase = require('./config/supabase');
-  
-  let redisStatus = 'connected';
-  let supabaseStatus = 'connected';
-
-  try {
-    await redisConnection.ping();
-  } catch (err) {
-    redisStatus = 'disconnected';
-  }
-
-  try {
-    const { error } = await supabase.from('profiles').select('id').limit(1);
-    if (error) throw error;
-  } catch (err) {
-    supabaseStatus = 'disconnected';
-  }
-
-  const isHealthy = redisStatus === 'connected' && supabaseStatus === 'connected';
-  
-  res.status(isHealthy ? 200 : 503).json({
-    status: isHealthy ? "healthy" : "unhealthy",
-    services: {
-      redis: redisStatus,
-      supabase: supabaseStatus
-    },
-    timestamp: new Date().toISOString()
+app.get("/api/health", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "Backend is running"
   });
 });
 
