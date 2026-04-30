@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../lib/api';
 import { getSocket, initSocket, disconnectSocket } from '../lib/socket';
 import { motion, AnimatePresence } from 'framer-motion';
+import toast from 'react-hot-toast';
 import { 
   ArrowLeft, 
   CheckCircle2, 

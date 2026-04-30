@@ -5,6 +5,7 @@ import { GitMerge, Plus, Play, Trash2, Edit2, Bot } from 'lucide-react';
 import { motion } from 'framer-motion';
 import api from '../lib/api';
 import NewWorkflowModal from '../components/NewWorkflowModal';
+import toast from 'react-hot-toast';
 
 const WorkflowSkeleton = () => (
   <div className="glass-card flex flex-col rounded-3xl p-6 shimmer">
@@ -36,17 +37,21 @@ const Workflows = () => {
     try {
       await api.delete(`/workflows/${id}`);
       removeWorkflow(id);
+      toast.success('Workflow deleted');
     } catch (err) {
       console.error('Failed to delete workflow:', err);
+      toast.error('Failed to delete workflow');
     }
   };
 
   const handleRun = async (id) => {
+    const t = toast.loading('Initiating neural pipeline...');
     try {
-      const { data } = await api.post(`/workflows/${id}/run`);
+      const { data } = await api.post(`/workflows/${id}/run`, { input: "" });
+      toast.success('Workflow execution started', { id: t });
       navigate(`/history/${data.executionId}`);
     } catch (err) {
-      alert(err.response?.data?.error || 'Failed to execute workflow');
+      toast.error(err.response?.data?.error || 'Failed to execute workflow', { id: t });
     }
   };
 

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useDataStore } from '../store/useDataStore';
 import { Bot, Plus, Edit2, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import toast from 'react-hot-toast';
 import AgentModal from '../components/AgentModal';
 import api from '../lib/api';
 

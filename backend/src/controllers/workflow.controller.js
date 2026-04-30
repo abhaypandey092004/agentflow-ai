@@ -192,7 +192,7 @@ const deleteWorkflow = async (req, res, next) => {
 const runWorkflowEndpoint = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { input } = req.body;
+    const { input = "" } = req.body || {};
     const { runWorkflow } = require('../services/workflowRunner.service');
     
     const execution = await runWorkflow(req.user.id, id, input);
