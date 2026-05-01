@@ -6,44 +6,50 @@ const errorMiddleware = require("./middleware/errorMiddleware");
 
 const app = express();
 
-const allowedOrigins = (process.env.FRONTEND_URLS || "")
-  .split(",")
-  .map((url) => url.trim())
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  ...(process.env.FRONTEND_URLS || "").split(","),
+]
+  .map((url) => url?.trim())
   .filter(Boolean);
 
 console.log("Allowed Origins:", allowedOrigins);
 
 // Security middlewares
-app.use(helmet({
-  contentSecurityPolicy: process.env.NODE_ENV === 'production',
-}));
-app.disable('x-powered-by');
+app.use(
+  helmet({
+    contentSecurityPolicy: process.env.NODE_ENV === "production" ? false : false,
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
+app.disable("x-powered-by");
 
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
+      // allow server-to-server, Postman, mobile apps
+      if (!origin) {
         return callback(null, true);
       }
 
-      console.error("Security Block: CORS policy rejected origin:", origin);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.error("CORS blocked origin:", origin);
       return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
 // Handle OPTIONS preflight
-app.use((req, res, next) => {
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-  next();
-});
+app.options("*", cors());
 
-// Body parser - production safe limits
+// Body parser
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 
@@ -51,10 +57,17 @@ app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 app.use("/api", apiLimiter);
 
 // Health check
+app.get("/", (req, res) => {
+  res.status(200).json({
+    status: "ok",
+    message: "AgentFlow backend is running",
+  });
+});
+
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     status: "ok",
-    message: "Backend is running"
+    message: "Backend is running",
   });
 });
 
@@ -76,7 +89,7 @@ app.use("/api/templates", templateRoutes);
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
-    message: `Route not found: ${req.method} ${req.originalUrl}`
+    message: `Route not found: ${req.method} ${req.originalUrl}`,
   });
 });
 
