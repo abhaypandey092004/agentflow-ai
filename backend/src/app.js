@@ -6,12 +6,9 @@ const errorMiddleware = require("./middleware/errorMiddleware");
 
 const app = express();
 
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  ...(process.env.FRONTEND_URLS || "").split(","),
-]
-  .map((url) => url?.trim())
-  .filter(Boolean);
+const env = require("./config/env");
+
+const allowedOrigins = env.cors.origins;
 
 console.log("Allowed Origins:", allowedOrigins);
 
@@ -37,16 +34,21 @@ app.disable("x-powered-by");
 app.use(
   cors({
     origin(origin, callback) {
-      // do NOT allow empty origin (server-to-server) unless explicitly allowed
+      // Allow requests with no origin (like mobile apps, curl, or Render health checks)
       if (!origin) {
-        return callback(new Error("CORS blocked: Origin required"));
+        return callback(null, true);
       }
 
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      console.error("CORS blocked origin:", origin);
+      // Special case: allow local development if not in production
+      if (process.env.NODE_ENV !== "production" && origin.startsWith("http://localhost")) {
+        return callback(null, true);
+      }
+
+      console.error(`[CORS] Blocked origin: ${origin}`);
       return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     credentials: true,

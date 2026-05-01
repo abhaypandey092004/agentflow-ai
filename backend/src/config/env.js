@@ -30,7 +30,10 @@ module.exports = {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
   },
   cors: {
-    origins: (process.env.FRONTEND_URLS || 'http://localhost:5173,http://localhost:5174').split(','),
+    origins: (process.env.FRONTEND_URLS || 'http://localhost:5173,http://localhost:5174')
+      .split(',')
+      .map(url => url.trim())
+      .filter(Boolean),
   }
 };
 
