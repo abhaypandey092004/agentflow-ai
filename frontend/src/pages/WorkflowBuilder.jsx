@@ -50,7 +50,8 @@ const WorkflowBuilder = () => {
         await fetchAgents();
 
         if (isEditing) {
-          const { data: workflowData } = await api.get(`/workflows/${id}`);
+          const { data } = await api.get(`/workflows/${id}`);
+          const workflowData = data?.data || data;
           setWorkflow({
             name: workflowData.name,
             description: workflowData.description || '',
@@ -254,7 +255,7 @@ const WorkflowBuilder = () => {
                   className="w-full rounded-2xl border border-white/5 bg-black/20 px-5 py-3.5 text-white focus:border-primary-500/50 focus:outline-none focus:ring-1 focus:ring-primary-500/20 transition-all appearance-none font-bold cursor-pointer"
                 >
                   <option value="" disabled>Select an agent...</option>
-                  {agents.map(a => (
+                  {(agents || []).map(a => (
                     <option key={a.id} value={a.id}>{a.name}</option>
                   ))}
                 </select>
@@ -287,7 +288,7 @@ const WorkflowBuilder = () => {
         </div>
         
         <div className="space-y-4">
-          {workflow.steps.map((step, index) => (
+          {(workflow.steps || []).map((step, index) => (
             <motion.div 
               key={index}
               initial={{ opacity: 0, x: -20 }}

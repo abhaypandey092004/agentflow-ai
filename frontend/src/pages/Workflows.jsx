@@ -127,7 +127,7 @@ const Workflows = () => {
         </motion.div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {workflows.map((workflow, index) => (
+          {(workflows || []).map((workflow, index) => (
             <motion.div 
               key={workflow.id}
               initial={{ opacity: 0, scale: 0.95 }}

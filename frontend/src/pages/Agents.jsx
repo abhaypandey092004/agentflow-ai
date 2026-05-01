@@ -145,7 +145,7 @@ const Agents = () => {
         </motion.div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {agents.map((agent, index) => (
+          {(agents || []).map((agent, index) => (
             <motion.div 
               key={agent.id}
               initial={{ opacity: 0, scale: 0.95 }}

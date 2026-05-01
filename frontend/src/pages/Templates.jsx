@@ -85,7 +85,7 @@ const Templates = () => {
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <AnimatePresence>
-          {templates.map((template, index) => (
+          {(templates || []).map((template, index) => (
             <motion.div 
               key={template.id}
               initial={{ opacity: 0, scale: 0.9 }}

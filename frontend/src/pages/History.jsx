@@ -92,7 +92,7 @@ const History = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5">
-                {executions.map((execution, index) => (
+                {(executions || []).map((execution, index) => (
                   <motion.tr 
                     key={execution.id} 
                     initial={{ opacity: 0 }}

@@ -34,7 +34,7 @@ const Execution = () => {
     const fetchExecution = async () => {
       try {
         const { data } = await api.get(`/executions/${id}`);
-        setExecution(data);
+        setExecution(data?.data || data);
       } catch (err) {
         console.error('Failed to fetch execution:', err);
         setError('Failed to load execution details.');
@@ -297,7 +297,7 @@ const Execution = () => {
             </h2>
             
             <div className="space-y-8 relative before:absolute before:inset-0 before:ml-[11px] before:-translate-x-px before:h-full before:w-[2px] before:bg-gradient-to-b before:from-primary-500/20 before:via-primary-500/40 before:to-transparent">
-              {execution.step_executions?.map((stepExec, index) => (
+              {(execution.step_executions || []).map((stepExec, index) => (
                 <motion.div 
                   key={stepExec.id} 
                   initial={{ opacity: 0, y: 10 }}

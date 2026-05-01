@@ -2,6 +2,14 @@ import { create } from 'zustand';
 import api from '../lib/api';
 import { supabase } from '../lib/supabase';
 
+const normalizeData = (response) => {
+  if (Array.isArray(response)) return response;
+  if (response && response.data && Array.isArray(response.data)) return response.data;
+  if (response && response.items && Array.isArray(response.items)) return response.items;
+  return [];
+};
+
+
 export const useDataStore = create((set, get) => ({
   agents: [],
   workflows: [],
@@ -52,8 +60,9 @@ export const useDataStore = create((set, get) => ({
     }));
     try {
       const { data } = await api.get('/agents');
+      const normalizedAgents = normalizeData(data);
       set((state) => ({ 
-        agents: data, 
+        agents: normalizedAgents, 
         lastFetched: { ...state.lastFetched, agents: now },
         loading: { ...state.loading, agents: false },
         isFetching: { ...state.isFetching, agents: false }
@@ -78,8 +87,9 @@ export const useDataStore = create((set, get) => ({
     set((state) => ({ loading: { ...state.loading, workflows: true } }));
     try {
       const { data } = await api.get('/workflows');
+      const normalizedWorkflows = normalizeData(data);
       set((state) => ({ 
-        workflows: data, 
+        workflows: normalizedWorkflows, 
         lastFetched: { ...state.lastFetched, workflows: now },
         loading: { ...state.loading, workflows: false }
       }));
@@ -100,8 +110,9 @@ export const useDataStore = create((set, get) => ({
     set((state) => ({ loading: { ...state.loading, executions: true } }));
     try {
       const { data } = await api.get('/executions');
+      const normalizedExecutions = normalizeData(data);
       set((state) => ({ 
-        executions: data, 
+        executions: normalizedExecutions, 
         lastFetched: { ...state.lastFetched, executions: now },
         loading: { ...state.loading, executions: false }
       }));
@@ -131,13 +142,17 @@ export const useDataStore = create((set, get) => ({
         api.get('/executions')
       ]);
 
+      const normalizedAgents = normalizeData(agentsRes.data);
+      const normalizedWorkflows = normalizeData(workflowsRes.data);
+      const normalizedExecutions = normalizeData(executionsRes.data);
+
       set((state) => ({ 
         stats: {
-          agents: agentsRes.data.length,
-          workflows: workflowsRes.data.length,
-          executions: executionsRes.data.length
+          agents: normalizedAgents.length,
+          workflows: normalizedWorkflows.length,
+          executions: normalizedExecutions.length
         },
-        executions: executionsRes.data,
+        executions: normalizedExecutions,
         lastFetched: { ...state.lastFetched, dashboard: now },
         loading: { ...state.loading, dashboard: false },
         isFetching: { ...state.isFetching, dashboard: false }
@@ -162,9 +177,10 @@ export const useDataStore = create((set, get) => ({
     set((state) => ({ loading: { ...state.loading, documents: true } }));
     try {
       const { data } = await api.get('/documents');
+      const normalizedDocs = normalizeData(data);
         
       set((state) => ({ 
-        documents: data || [], 
+        documents: normalizedDocs, 
         lastFetched: { ...state.lastFetched, documents: now },
         loading: { ...state.loading, documents: false }
       }));
@@ -185,8 +201,9 @@ export const useDataStore = create((set, get) => ({
     set((state) => ({ loading: { ...state.loading, templates: true } }));
     try {
       const { data } = await api.get('/templates');
+      const normalizedTemplates = normalizeData(data);
       set((state) => ({ 
-        templates: data || [], 
+        templates: normalizedTemplates, 
         lastFetched: { ...state.lastFetched, templates: now },
         loading: { ...state.loading, templates: false }
       }));
