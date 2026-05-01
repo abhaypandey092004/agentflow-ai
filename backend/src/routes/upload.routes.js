@@ -5,9 +5,19 @@ const authMiddleware = require('../middleware/authMiddleware');
 const path = require('path');
 const multer = require('multer');
 
+const { uploadLimiter } = require('../middleware/rateLimiter');
+
 // Setup multer for temporary local storage with security constraints
+const storage = multer.diskStorage({
+  destination: 'uploads/',
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
 const upload = multer({ 
-  dest: 'uploads/',
+  storage,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB max
   },
@@ -34,7 +44,7 @@ const upload = multer({
 // All upload routes are protected
 router.use(authMiddleware);
 
-router.post('/', upload.single('file'), uploadController.uploadFile);
+router.post('/', uploadLimiter, upload.single('file'), uploadController.uploadFile);
 router.get('/:id/parse', uploadController.parseDocument);
 router.delete('/:id', uploadController.deleteFile);
 

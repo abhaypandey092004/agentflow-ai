@@ -35,9 +35,22 @@ const Documents = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const allowedTypes = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
-    if (!allowedTypes.includes(file.type)) {
-      alert('Only PDF, DOCX, and TXT files are supported.');
+    const allowedTypes = [
+      'application/pdf', 
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 
+      'text/plain',
+      'text/markdown'
+    ];
+    const allowedExtensions = ['.pdf', '.docx', '.txt', '.md'];
+    const fileExt = file.name.slice(((file.name.lastIndexOf(".") - 1) >>> 0) + 2).toLowerCase();
+
+    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(`.${fileExt}`)) {
+      toast.error('Only PDF, DOCX, TXT, and MD files are supported.');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File too large. Maximum size is 10MB.');
       return;
     }
 
@@ -129,7 +142,7 @@ const Documents = () => {
             ref={fileInputRef} 
             onChange={handleFileUpload} 
             className="hidden" 
-            accept=".pdf,.docx,.txt"
+            accept=".pdf,.docx,.txt,.md"
           />
           <motion.button
             whileHover={{ scale: 1.02 }}

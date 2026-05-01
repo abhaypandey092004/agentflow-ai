@@ -240,6 +240,7 @@ const WorkflowBuilder = () => {
                 type="text"
                 value={workflow.name}
                 onChange={(e) => setWorkflow({ ...workflow, name: e.target.value })}
+                maxLength={100}
                 className="w-full rounded-2xl border border-white/5 bg-black/20 px-5 py-3.5 text-white placeholder-slate-600 focus:border-primary-500/50 focus:outline-none focus:ring-1 focus:ring-primary-500/20 transition-all font-bold"
                 placeholder="Pipeline Name"
               />
@@ -266,6 +267,7 @@ const WorkflowBuilder = () => {
               value={workflow.description}
               onChange={(e) => setWorkflow({ ...workflow, description: e.target.value })}
               rows={5}
+              maxLength={500}
               className="w-full rounded-2xl border border-white/5 bg-black/20 px-5 py-3.5 text-white placeholder-slate-600 focus:border-primary-500/50 focus:outline-none focus:ring-1 focus:ring-primary-500/20 transition-all font-bold resize-none"
               placeholder="What is the objective of this pipeline?"
             />
@@ -332,6 +334,7 @@ const WorkflowBuilder = () => {
                     type="text"
                     value={step.name}
                     onChange={(e) => handleStepChange(index, 'name', e.target.value)}
+                    maxLength={100}
                     className="w-full rounded-2xl border border-white/5 bg-black/20 px-5 py-3 text-sm text-white focus:border-primary-500/50 focus:outline-none transition-all font-bold"
                     placeholder="e.g. Analysis Phase"
                   />
@@ -356,6 +359,7 @@ const WorkflowBuilder = () => {
                   value={step.prompt}
                   onChange={(e) => handleStepChange(index, 'prompt', e.target.value)}
                   rows={4}
+                  maxLength={4000}
                   className="w-full rounded-2xl border border-white/5 bg-black/20 px-5 py-4 text-sm text-white placeholder-slate-700 focus:border-primary-500/50 focus:outline-none font-mono transition-all leading-relaxed"
                   placeholder={`Define the logic for this operation...\n\nPro Tip: Use {{input}} to reference upstream data.`}
                 />

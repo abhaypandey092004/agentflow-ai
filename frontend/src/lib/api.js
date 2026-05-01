@@ -22,8 +22,16 @@ export const apiRequest = async (endpoint, options = {}) => {
     credentials: "include",
   });
 
-  let data = null;
+  if (response.status === 401 || response.status === 403) {
+    console.warn("Authentication failure. Redirecting to login...");
+    localStorage.removeItem("token");
+    localStorage.removeItem("access_token");
+    if (!window.location.pathname.includes("/login")) {
+      window.location.href = "/login?expired=true";
+    }
+  }
 
+  let data = null;
   try {
     data = await response.json();
   } catch {
@@ -31,9 +39,8 @@ export const apiRequest = async (endpoint, options = {}) => {
   }
 
   if (!response.ok) {
-    throw new Error(
-      data?.message || data?.error || `API request failed: ${response.status}`
-    );
+    const errorMsg = data?.error || data?.message || `API Error: ${response.status}`;
+    throw new Error(errorMsg);
   }
 
   return data;
@@ -74,3 +81,5 @@ export const api = {
       body: formData,
     }),
 };
+
+export default api;

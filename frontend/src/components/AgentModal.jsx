@@ -92,6 +92,7 @@ const AgentModal = ({ isOpen, onClose, agent, onSave }) => {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    maxLength={100}
                     className="w-full rounded-2xl border border-white/5 bg-black/20 px-5 py-4 text-white placeholder-slate-600 focus:border-primary-500/50 focus:outline-none transition-all font-bold"
                     placeholder="e.g. Cognitive Engine Alpha"
                   />
@@ -103,6 +104,7 @@ const AgentModal = ({ isOpen, onClose, agent, onSave }) => {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     rows={4}
+                    maxLength={500}
                     className="w-full rounded-2xl border border-white/5 bg-black/20 px-5 py-4 text-white placeholder-slate-600 focus:border-primary-500/50 focus:outline-none transition-all font-bold resize-none"
                     placeholder="Define the primary mission of this autonomous unit..."
                   />

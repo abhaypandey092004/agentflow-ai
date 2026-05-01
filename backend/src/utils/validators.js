@@ -29,7 +29,9 @@ const createWorkflowSchema = z.object({
     agent_id: z.string().uuid("Invalid agent ID"),
     name: z.string().min(1, "Workflow name is required").max(100),
     description: z.string().optional(),
-    steps: z.array(workflowStepSchema).min(1, "At least one step is required"),
+    steps: z.array(workflowStepSchema)
+      .min(1, "At least one step is required")
+      .max(10, "Maximum 10 steps allowed per workflow"),
   }),
 });
 
@@ -37,7 +39,9 @@ const updateWorkflowSchema = z.object({
   body: z.object({
     name: z.string().min(1, "Workflow name is required").max(100).optional(),
     description: z.string().optional(),
-    steps: z.array(workflowStepSchema).optional(),
+    steps: z.array(workflowStepSchema)
+      .max(10, "Maximum 10 steps allowed per workflow")
+      .optional(),
   }),
 });
 

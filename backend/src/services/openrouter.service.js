@@ -10,9 +10,13 @@ async function runAI(userId, prompt, systemPrompt = "You are a helpful AI assist
     throw new Error('AI service is not configured');
   }
 
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "Authorization": `Bearer ${env.openrouter.apiKey}`,
         "HTTP-Referer": "https://agentflow.ai",
@@ -30,6 +34,8 @@ async function runAI(userId, prompt, systemPrompt = "You are a helpful AI assist
       })
     });
 
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
       const errorData = await response.json();
       console.error("OpenRouter Error:", errorData);
@@ -38,6 +44,10 @@ async function runAI(userId, prompt, systemPrompt = "You are a helpful AI assist
 
     const data = await response.json();
     const resultText = data.choices[0]?.message?.content || "";
+    
+    if (!resultText) {
+      throw new Error("AI failed to generate a response. Please try again.");
+    }
 
     // Log AI execution in audit_logs
     await supabase.from('audit_logs').insert({
@@ -52,11 +62,16 @@ async function runAI(userId, prompt, systemPrompt = "You are a helpful AI assist
 
     return resultText;
   } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('AI synthesis timed out after 60 seconds.');
+    }
     console.error("runAI Exception:", err.message);
     const safeMessage = err.message === 'AI service is not configured' 
       ? err.message 
       : "AI synthesis unavailable. Please try again later.";
     throw new Error(safeMessage);
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 

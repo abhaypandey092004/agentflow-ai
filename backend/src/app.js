@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
-const rateLimiter = require("./middleware/rateLimiter");
+const { apiLimiter } = require("./middleware/rateLimiter");
 const errorMiddleware = require("./middleware/errorMiddleware");
 
 const app = express();
@@ -14,7 +14,10 @@ const allowedOrigins = (process.env.FRONTEND_URLS || "")
 console.log("Allowed Origins:", allowedOrigins);
 
 // Security middlewares
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: process.env.NODE_ENV === 'production',
+}));
+app.disable('x-powered-by');
 
 app.use(
   cors({
@@ -23,7 +26,7 @@ app.use(
         return callback(null, true);
       }
 
-      console.error("Blocked Origin:", origin);
+      console.error("Security Block: CORS policy rejected origin:", origin);
       return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
     credentials: true,
@@ -40,12 +43,12 @@ app.use((req, res, next) => {
   next();
 });
 
-// Body parser
-app.use(express.json({ limit: "10mb" }));
-app.use(express.urlencoded({ extended: true }));
+// Body parser - production safe limits
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 
 // Rate limiter
-app.use("/api", rateLimiter);
+app.use("/api", apiLimiter);
 
 // Health check
 app.get("/api/health", (req, res) => {
