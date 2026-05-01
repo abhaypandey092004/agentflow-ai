@@ -5,6 +5,11 @@ const getToken = () => {
   return localStorage.getItem("token") || localStorage.getItem("access_token");
 };
 
+const normalizeEndpoint = (endpoint) => {
+  if (endpoint.startsWith("/api")) return endpoint;
+  return `/api${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
+};
+
 export const apiRequest = async (endpoint, options = {}) => {
   const token = getToken();
 
@@ -16,7 +21,7 @@ export const apiRequest = async (endpoint, options = {}) => {
     ...options.headers,
   };
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(`${API_BASE_URL}${normalizeEndpoint(endpoint)}`, {
     ...options,
     headers,
     credentials: "include",
