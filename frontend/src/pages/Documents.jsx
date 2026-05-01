@@ -46,7 +46,7 @@ const Documents = () => {
     formData.append('file', file);
 
     try {
-      await api.post('/uploads', formData, {
+      await api.post('/documents', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       fetchDocuments(true);
@@ -54,7 +54,7 @@ const Documents = () => {
       if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (err) {
       console.error('Upload failed:', err);
-      toast.error('Failed to upload document. Max size 5MB.');
+      toast.error('Failed to upload document. Max size 10MB.');
     } finally {
       setUploading(false);
     }
@@ -65,7 +65,7 @@ const Documents = () => {
     
     const t = toast.loading('Purging knowledge asset...');
     try {
-      await api.delete(`/uploads/${id}`);
+      await api.delete(`/documents/${id}`);
       removeDocument(id);
       toast.success('Document deleted successfully', { id: t });
     } catch (err) {
@@ -78,7 +78,7 @@ const Documents = () => {
     const t = toast.loading('Extracting intelligence...');
     try {
       setParsing(true);
-      const { data } = await api.get(`/uploads/${id}/parse`);
+      const { data } = await api.get(`/documents/${id}/parse`);
       setParsedText(data.text);
       toast.success('Text extracted successfully', { id: t });
     } catch (err) {

@@ -9,22 +9,24 @@ const multer = require('multer');
 const upload = multer({ 
   dest: 'uploads/',
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB max
+    fileSize: 10 * 1024 * 1024, // 10MB max
   },
   fileFilter: (req, file, cb) => {
     const allowedMimeTypes = [
       'application/pdf',
       'text/plain',
+      'text/markdown',
+      'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     ];
     
-    const allowedExtensions = ['.pdf', '.txt', '.docx'];
+    const allowedExtensions = ['.pdf', '.txt', '.doc', '.docx', '.md'];
     const ext = path.extname(file.originalname).toLowerCase();
     
     if (allowedMimeTypes.includes(file.mimetype) && allowedExtensions.includes(ext)) {
       cb(null, true);
     } else {
-      cb(new Error('Invalid file type. Only PDF, TXT, and DOCX are allowed.'));
+      cb(new Error('Security Block: Invalid file type. Only PDF, DOC, DOCX, TXT, and MD are permitted.'));
     }
   }
 });

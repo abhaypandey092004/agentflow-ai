@@ -66,7 +66,7 @@ const templateRoutes = require("./routes/template.routes");
 app.use("/api/agents", agentRoutes);
 app.use("/api/workflows", workflowRoutes);
 app.use("/api/executions", executionRoutes);
-app.use("/api/uploads", uploadRoutes);
+app.use("/api/documents", uploadRoutes);
 app.use("/api/export", exportRoutes);
 app.use("/api/templates", templateRoutes);
 

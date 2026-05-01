@@ -36,6 +36,13 @@ const exportPdf = async (req, res, next) => {
     doc.fontSize(12).text(content, { align: 'left' });
     doc.end();
 
+    // Log audit
+    await supabase.from('audit_logs').insert({
+      user_id: req.user.id,
+      action: 'export_pdf',
+      details: { executionId }
+    });
+
   } catch (err) {
     next(err);
   }
@@ -85,6 +92,13 @@ const exportDocx = async (req, res, next) => {
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(buffer);
+
+    // Log audit
+    await supabase.from('audit_logs').insert({
+      user_id: req.user.id,
+      action: 'export_docx',
+      details: { executionId }
+    });
 
   } catch (err) {
     next(err);

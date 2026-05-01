@@ -1,7 +1,5 @@
 const supabase = require('../config/supabase');
 const workflowQueue = require('../queues/workflow.queue');
-const aiService = require('./ai.service');
-const { searchWeb } = require('./search.service');
 
 /**
  * Public API to initiate a workflow run
@@ -59,7 +57,14 @@ const runWorkflow = async (userId, workflowId, initialInput = '') => {
     throw new Error('Failed to create execution record');
   }
 
-  // 3. Enqueue via BullMQ for production processing
+  // 3. Log audit action
+  await supabase.from('audit_logs').insert({
+    user_id: userId,
+    action: 'workflow_run_initiated',
+    details: { executionId: execution.id, workflowId }
+  });
+
+  // 4. Enqueue via BullMQ for production processing
   try {
     await workflowQueue.add(`execute-${execution.id}`, {
       userId,

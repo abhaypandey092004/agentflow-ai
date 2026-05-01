@@ -1,9 +1,18 @@
 const { Worker } = require('bullmq');
 const redisConnection = require('../config/redis');
 const supabase = require('../config/supabase');
-const aiService = require('../services/ai.service');
+const openrouterService = require('../services/openrouter.service');
 const { searchWeb } = require('../services/search.service');
 const { getIo } = require('../socket');
+
+const systemPrompts = {
+  research: "You are a world-class research analyst. Analyze the provided search data and extract critical facts, statistics, and insights. Structure your findings logically.",
+  summarize: "You are an expert at synthesis. Take the provided information and distill it into a concise, high-impact summary while retaining all essential nuances.",
+  generate: "You are an elite content creator and copywriter. Create engaging, high-quality content that is SEO-optimized, well-structured with headings, and perfectly tailored to the user's objective.",
+  rewrite: "You are a meticulous editor. Refine the provided text for clarity, tone, and professional impact.",
+  extract: "You are a data extraction specialist. Identify and structure key entities, dates, and metrics from the provided text into a clean format.",
+  custom: "You are a helpful AI assistant tasked with following instructions precisely."
+};
 
 const emitUpdate = (userId, event, payload) => {
   try {
@@ -67,6 +76,7 @@ const processWorkflow = async (job) => {
         );
 
         let result = '';
+        const systemPrompt = systemPrompts[step.type] || systemPrompts.custom;
 
         if (step.type === 'research') {
           // 1. Perform real web search
@@ -76,22 +86,20 @@ const processWorkflow = async (job) => {
 
           // 2. Pass search results to AI for structured analysis
           result = await Promise.race([
-            aiService.executeStep(
-              'research',
+            openrouterService.runAI(
+              userId,
               `Analyze and structure the following research data based on this objective: ${processedPrompt}\n\nRESEARCH DATA:\n${searchData}`,
-              step.model,
-              previousOutput
+              systemPrompt
             ),
             timeoutPromise
           ]);
         } else {
           // Standard AI step
           result = await Promise.race([
-            aiService.executeStep(
-              step.type,
+            openrouterService.runAI(
+              userId,
               processedPrompt,
-              step.model,
-              previousOutput
+              systemPrompt
             ),
             timeoutPromise
           ]);

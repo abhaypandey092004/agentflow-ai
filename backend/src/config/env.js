@@ -7,9 +7,8 @@ module.exports = {
     url: process.env.SUPABASE_URL,
     serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
   },
-  openai: {
-    apiKey: process.env.OPENAI_API_KEY,
-    mockMode: process.env.OPENAI_MOCK_MODE === 'true',
+  openrouter: {
+    apiKey: process.env.OPENROUTER_API_KEY,
   },
   redis: {
     url: process.env.REDIS_URL || 'redis://localhost:6379',

@@ -165,19 +165,27 @@ create policy "Users can delete own step executions" on step_executions for dele
   exists (select 1 from workflow_executions where workflow_executions.id = step_executions.execution_id and workflow_executions.user_id = auth.uid())
 );
 
--- Prompt Templates (Public read, admin write - assuming public for all users for now)
-create policy "Anyone can view templates" on prompt_templates for select using (true);
+-- Prompt Templates
+-- CRITICAL SECURITY: Public read access for templates. 
+-- Write access (INSERT/UPDATE/DELETE) is restricted to the service role (backend only).
+create policy "Templates are viewable by everyone" on prompt_templates for select using (true);
 
 -- Uploaded Files
 create policy "Users can view own uploaded files" on uploaded_files for select using (auth.uid() = user_id);
 create policy "Users can insert own uploaded files" on uploaded_files for insert with check (auth.uid() = user_id);
 create policy "Users can delete own uploaded files" on uploaded_files for delete using (auth.uid() = user_id);
+-- Secure UPDATE policy: Users can only update their own files.
+-- Field-level security is enforced at the application layer to prevent hijacking sensitive paths.
+create policy "Users can update own uploaded files" on uploaded_files for update using (auth.uid() = user_id);
 
 -- Audit Logs
 create policy "Users can view own audit logs" on audit_logs for select using (auth.uid() = user_id);
 create policy "Users can insert own audit logs" on audit_logs for insert with check (auth.uid() = user_id);
 
--- 5. Create Functions & Triggers
+-- 5. Performance Optimization Indexes
+-- Optimize audit logs for chronological retrieval and per-user filtering
+create index if not exists idx_audit_logs_created_at on audit_logs(created_at desc);
+create index if not exists idx_audit_logs_user_id_created_at on audit_logs(user_id, created_at desc);
 
 -- Trigger function for updated_at
 create or replace function public.handle_updated_at()
