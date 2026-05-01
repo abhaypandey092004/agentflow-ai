@@ -6,6 +6,10 @@ const supabase = require('../config/supabase');
  * Model: nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free
  */
 async function runAI(userId, prompt, systemPrompt = "You are a helpful AI assistant.") {
+  if (!env.openrouter.apiKey) {
+    throw new Error('AI service is not configured');
+  }
+
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -49,7 +53,10 @@ async function runAI(userId, prompt, systemPrompt = "You are a helpful AI assist
     return resultText;
   } catch (err) {
     console.error("runAI Exception:", err.message);
-    throw new Error("Neural pipeline failure: " + (err.message.includes('disruption') ? err.message : "Internal AI error."));
+    const safeMessage = err.message === 'AI service is not configured' 
+      ? err.message 
+      : "AI synthesis unavailable. Please try again later.";
+    throw new Error(safeMessage);
   }
 }
 

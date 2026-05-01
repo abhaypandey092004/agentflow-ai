@@ -20,7 +20,7 @@ const workflowStepSchema = z.object({
   name: z.string().min(1, "Step name is required").max(100),
   type: z.enum(['research', 'summarize', 'generate', 'rewrite', 'extract', 'custom']),
   prompt: z.string().min(1, "Prompt is required"),
-  model: z.string().default('gpt-4o-mini'),
+  model: z.string().default('nemotron-3-nano-free'),
   order_number: z.number().int().min(1),
 });
 

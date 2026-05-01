@@ -37,7 +37,7 @@ const WorkflowBuilder = () => {
         name: 'Initial Step', 
         type: 'custom', 
         prompt: initialData.initialPrompt || '', 
-        model: 'gpt-4o-mini', 
+        model: 'nemotron-3-nano-free', 
         order_number: 1 
       }
     ]
@@ -92,7 +92,7 @@ const WorkflowBuilder = () => {
           name: `Step ${workflow.steps.length + 1}`,
           type: 'custom',
           prompt: '',
-          model: 'gpt-4o-mini',
+          model: 'nemotron-3-nano-free',
           order_number: workflow.steps.length + 1
         }
       ]

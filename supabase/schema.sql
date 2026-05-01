@@ -36,7 +36,7 @@ create table workflow_steps (
   name text not null,
   type text not null check (type in ('research', 'summarize', 'generate', 'rewrite', 'extract', 'custom')),
   prompt text not null,
-  model text default 'gpt-4o-mini',
+  model text default 'nemotron-3-nano-free',
   order_number integer not null,
   created_at timestamp with time zone default timezone('utc'::text, now()) not null,
   updated_at timestamp with time zone default timezone('utc'::text, now()) not null
