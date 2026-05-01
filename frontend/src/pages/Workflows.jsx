@@ -47,13 +47,23 @@ const Workflows = () => {
   const handleRun = async (id) => {
     const t = toast.loading('Initiating neural pipeline...');
     try {
-      const { data } = await api.post(`/workflows/${id}/run`, { input: "" });
+      const workflow = workflows.find((w) => w.id === id);
+      const input = workflow?.description || workflow?.name || "Run this workflow";
+
+      const response = await api.post(`/workflows/${id}/run`, { input });
+      const executionId = response?.data?.executionId || response?.executionId;
+
+      if (!executionId) throw new Error("Execution ID missing from response");
+
       toast.success('Workflow execution started', { id: t });
-      navigate(`/history/${data.executionId}`);
+      navigate(`/history/${executionId}`);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to execute workflow', { id: t });
+      console.error('Workflow execution error:', err);
+      const errorMessage = err.response?.data?.error || err.message || 'Failed to execute workflow';
+      toast.error(errorMessage, { id: t });
     }
   };
+
 
   if (isInitialLoading) {
     return (
