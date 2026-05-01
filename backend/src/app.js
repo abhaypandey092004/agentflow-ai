@@ -46,9 +46,6 @@ app.use(
   })
 );
 
-// Handle OPTIONS preflight
-app.options("*", cors());
-
 // Body parser
 app.use(express.json({ limit: "100kb" }));
 app.use(express.urlencoded({ extended: true, limit: "100kb" }));
@@ -56,14 +53,12 @@ app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 // Rate limiter
 app.use("/api", apiLimiter);
 
-// Health check
+// Root route (important for Render deployment verification)
 app.get("/", (req, res) => {
-  res.status(200).json({
-    status: "ok",
-    message: "AgentFlow backend is running",
-  });
+  res.send("Backend is live");
 });
 
+// Health check route for production monitoring
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     status: "ok",
