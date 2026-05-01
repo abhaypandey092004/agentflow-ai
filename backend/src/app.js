@@ -18,7 +18,16 @@ console.log("Allowed Origins:", allowedOrigins);
 // Security middlewares
 app.use(
   helmet({
-    contentSecurityPolicy: process.env.NODE_ENV === "production" ? false : false,
+    contentSecurityPolicy: process.env.NODE_ENV === "production" ? {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        imgSrc: ["'self'", "data:", "https://*"],
+        connectSrc: ["'self'", "https://openrouter.ai", "https://*.supabase.co", "wss://*.supabase.co"]
+      }
+    } : false,
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
@@ -28,9 +37,9 @@ app.disable("x-powered-by");
 app.use(
   cors({
     origin(origin, callback) {
-      // allow server-to-server, Postman, mobile apps
+      // do NOT allow empty origin (server-to-server) unless explicitly allowed
       if (!origin) {
-        return callback(null, true);
+        return callback(new Error("CORS blocked: Origin required"));
       }
 
       if (allowedOrigins.includes(origin)) {
@@ -59,10 +68,29 @@ app.get("/", (req, res) => {
 });
 
 // Health check route for production monitoring
-app.get("/api/health", (req, res) => {
-  res.status(200).json({
-    status: "ok",
-    message: "Backend is running",
+app.get("/api/health", async (req, res) => {
+  const supabase = require("./config/supabase");
+  const redis = require("./config/redis");
+  
+  let dbStatus = "ok";
+  let redisStatus = "ok";
+  
+  try {
+    const { error } = await supabase.from("agents").select("id").limit(1);
+    if (error) dbStatus = "error";
+  } catch (e) { dbStatus = "error"; }
+  
+  try {
+    await redis.ping();
+  } catch (e) { redisStatus = "error"; }
+
+  const status = (dbStatus === "ok" && redisStatus === "ok") ? 200 : 503;
+  
+  res.status(status).json({
+    status: status === 200 ? "ok" : "degraded",
+    database: dbStatus,
+    redis: redisStatus,
+    timestamp: new Date().toISOString()
   });
 });
 

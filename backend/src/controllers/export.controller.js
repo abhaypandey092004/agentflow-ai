@@ -22,18 +22,33 @@ const exportPdf = async (req, res, next) => {
     const content = execution.result;
     if (!content) return res.status(400).json({ error: 'No output found to export' });
 
-    const doc = new PDFDocument();
-    const filename = `${execution.workflows?.name || 'export'}.pdf`;
+    const doc = new PDFDocument({ margin: 50 });
+    const sanitizedFilename = (execution.workflows?.name || 'report').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    const filename = `${sanitizedFilename}.pdf`;
     
+    // Set headers for binary download
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-cache');
 
     doc.pipe(res);
-    doc.fontSize(16).text(execution.workflows?.name || 'AI Export', { underline: true });
+    
+    // Header
+    doc.fontSize(24).font('Helvetica-Bold').text('AgentFlow AI Intelligence Report', { align: 'center' });
     doc.moveDown();
-    doc.fontSize(10).text(`Generated on: ${new Date().toLocaleString()}`, { color: 'grey' });
+    doc.fontSize(14).font('Helvetica-Bold').text(`Workflow: ${execution.workflows?.name}`, { align: 'left' });
+    doc.fontSize(10).font('Helvetica').text(`Generated on: ${new Date().toLocaleString()}`, { color: 'grey' });
+    doc.moveDown();
+    doc.rect(doc.x, doc.y, 500, 1).fill('#cbd5e1'); // Divider line
     doc.moveDown(2);
-    doc.fontSize(12).text(content, { align: 'left' });
+
+    // Body
+    doc.fontSize(12).font('Helvetica').text(content, { 
+      align: 'left',
+      lineGap: 4,
+      paragraphGap: 10
+    });
+
     doc.end();
 
     // Log audit

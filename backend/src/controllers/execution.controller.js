@@ -2,17 +2,31 @@ const supabase = require('../config/supabase');
 
 const getAllExecutions = async (req, res, next) => {
   try {
-    const { data: executions, error } = await supabase
+    const { page = 1, limit = 10 } = req.query;
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    const { data: executions, error, count } = await supabase
       .from('workflow_executions')
       .select(`
         *,
         workflows(name, agent_id, agents(name))
-      `)
+      `, { count: 'exact' })
       .eq('user_id', req.user.id)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(from, to);
 
     if (error) throw error;
-    res.json(executions);
+    
+    res.json({
+      data: executions,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: count,
+        pages: Math.ceil(count / limit)
+      }
+    });
   } catch (err) {
     next(err);
   }

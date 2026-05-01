@@ -10,7 +10,16 @@ const uploadFile = async (req, res, next) => {
     }
 
     const file = req.file;
-    const fileExt = file.originalname.split('.').pop();
+    
+    // 0. Magic Byte Validation (Basic)
+    const bufferHead = fs.readFileSync(file.path, { start: 0, end: 3 });
+    const isPDF = bufferHead.toString('hex') === '25504446'; // %PDF
+    if (file.mimetype === 'application/pdf' && !isPDF) {
+      fs.unlinkSync(file.path);
+      return res.status(400).json({ error: 'File signature mismatch (Invalid PDF)' });
+    }
+
+    const fileExt = file.originalname.split('.').pop().replace(/[^a-z0-9]/gi, ''); // Sanitize ext
     const fileName = `${req.user.id}-${Date.now()}.${fileExt}`;
     const filePath = `user_uploads/${fileName}`;
 
@@ -29,24 +38,23 @@ const uploadFile = async (req, res, next) => {
       throw new Error(`Storage upload failed: ${storageError.message}`);
     }
 
-    // Get public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('documents')
-      .getPublicUrl(filePath);
-
     // Insert into uploaded_files table
     const { data: dbData, error: dbError } = await supabase
       .from('uploaded_files')
       .insert({
         user_id: req.user.id,
-        file_name: file.originalname,
-        file_url: publicUrl,
+        file_name: file.originalname.replace(/[^a-z0-9.]/gi, '_'), // Sanitize filename
+        file_url: null, // Remove public URLs for security
         storage_path: filePath
       })
       .select()
       .single();
 
-    if (dbError) throw dbError;
+    if (dbError) {
+      // Cleanup storage if DB fails
+      await supabase.storage.from('documents').remove([filePath]);
+      throw dbError;
+    }
 
     // Clean up local temp file
     fs.unlinkSync(file.path);

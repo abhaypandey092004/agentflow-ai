@@ -57,14 +57,29 @@ const Agents = () => {
     }
   };
 
-  const handleSave = (savedAgent) => {
+  const handleSave = async (savedAgent) => {
     if (editingAgent) {
       updateAgent(savedAgent);
-      alert('Agent updated successfully.');
+      toast.success('Agent updated successfully.');
     } else {
       addAgent(savedAgent);
-      alert('Agent created successfully. Now build workflow.');
-      navigate(`/workflows/builder?agentId=${savedAgent.id}`);
+      
+      // Auto-run the generated workflow
+      if (savedAgent.workflow_id) {
+        try {
+          toast.loading('Initializing neural workflow...', { id: 'exec-toast' });
+          const { data } = await api.post(`/workflows/${savedAgent.workflow_id}/execute`);
+          toast.success('Workflow synchronized and running!', { id: 'exec-toast' });
+          navigate(`/history/${data.executionId}`);
+        } catch (err) {
+          console.error('Auto-run failed:', err);
+          toast.error('Agent deployed, but auto-run failed. Start manually from Workflows.', { id: 'exec-toast' });
+          navigate('/workflows');
+        }
+      } else {
+        toast.success('Agent created successfully.');
+        navigate('/workflows');
+      }
     }
   };
 
