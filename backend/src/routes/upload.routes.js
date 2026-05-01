@@ -44,6 +44,7 @@ const upload = multer({
 // All upload routes are protected
 router.use(authMiddleware);
 
+router.get('/', uploadController.listFiles);
 router.post('/', uploadLimiter, upload.single('file'), uploadController.uploadFile);
 router.get('/:id/parse', uploadController.parseDocument);
 router.delete('/:id', uploadController.deleteFile);

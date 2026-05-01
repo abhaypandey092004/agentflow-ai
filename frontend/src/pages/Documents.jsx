@@ -59,9 +59,7 @@ const Documents = () => {
     formData.append('file', file);
 
     try {
-      await api.post('/documents', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      await api.upload('/documents', formData);
       fetchDocuments(true);
       toast.success('Document uploaded successfully');
       if (fileInputRef.current) fileInputRef.current.value = '';

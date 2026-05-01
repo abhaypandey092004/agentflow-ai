@@ -161,12 +161,8 @@ export const useDataStore = create((set, get) => ({
 
     set((state) => ({ loading: { ...state.loading, documents: true } }));
     try {
-      const { data, error } = await supabase
-        .from('uploaded_files')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data } = await api.get('/documents');
         
-      if (error) throw error;
       set((state) => ({ 
         documents: data || [], 
         lastFetched: { ...state.lastFetched, documents: now },

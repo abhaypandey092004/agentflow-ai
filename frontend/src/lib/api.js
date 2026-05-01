@@ -1,9 +1,6 @@
+import { supabase } from "./supabase";
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5000";
-
-const getToken = () => {
-  return localStorage.getItem("token") || localStorage.getItem("access_token");
-};
 
 const normalizeEndpoint = (endpoint) => {
   if (endpoint.startsWith("/api")) return endpoint;
@@ -11,7 +8,8 @@ const normalizeEndpoint = (endpoint) => {
 };
 
 export const apiRequest = async (endpoint, options = {}) => {
-  const token = getToken();
+  const { data: { session } } = await supabase.auth.getSession();
+  const token = session?.access_token;
 
   const isFormData = options.body instanceof FormData;
 
@@ -48,7 +46,7 @@ export const apiRequest = async (endpoint, options = {}) => {
     throw new Error(errorMsg);
   }
 
-  return data;
+  return { data };
 };
 
 export const api = {

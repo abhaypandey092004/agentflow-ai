@@ -166,8 +166,24 @@ const deleteFile = async (req, res, next) => {
   }
 };
 
+const listFiles = async (req, res, next) => {
+  try {
+    const { data, error } = await supabase
+      .from('uploaded_files')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   uploadFile,
   parseDocument,
-  deleteFile
+  deleteFile,
+  listFiles
 };

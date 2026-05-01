@@ -1,5 +1,5 @@
 import React from 'react';
-import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -51,9 +51,9 @@ const MainLayout = () => {
       {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-72 transform glass transition-all duration-500 lg:static lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex h-20 items-center justify-between border-b border-white/5 px-8">
-          <h1 className="text-2xl font-black text-gradient tracking-tighter">
+          <Link to="/dashboard" className="text-2xl font-black text-gradient tracking-tighter hover:opacity-80 transition-opacity">
             AgentFlow AI
-          </h1>
+          </Link>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400">
             <X size={20} />
           </button>

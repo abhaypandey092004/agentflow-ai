@@ -56,7 +56,7 @@ const Dashboard = () => {
             Build custom AI agents that execute multi-step workflows automatically. Chain language models to research, generate, and process data at scale.
           </p>
           
-          <Link to="/builder">
+          <Link to="/workflows/builder">
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
