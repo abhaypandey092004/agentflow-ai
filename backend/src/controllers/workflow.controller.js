@@ -189,30 +189,11 @@ const deleteWorkflow = async (req, res, next) => {
   }
 };
 
-const runWorkflowEndpoint = async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { input = "" } = req.body || {};
-    const { runWorkflow } = require('../services/workflowRunner.service');
-    
-    const execution = await runWorkflow(req.user.id, id, input);
-    res.status(202).json({ message: 'Workflow execution started', executionId: execution.id });
-  } catch (err) {
-    if (err.message === 'Workflow not found or access denied') {
-      return res.status(404).json({ error: err.message });
-    }
-    if (err.message === 'Workflow has no steps to execute') {
-      return res.status(400).json({ error: err.message });
-    }
-    next(err);
-  }
-};
-
 module.exports = {
   getAllWorkflows,
   getWorkflowById,
   createWorkflow,
   updateWorkflow,
-  deleteWorkflow,
-  runWorkflowEndpoint
+  deleteWorkflow
 };
+

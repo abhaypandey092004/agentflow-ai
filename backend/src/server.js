@@ -11,7 +11,9 @@ const server = http.createServer(app);
 initSocket(server);
 
 // Start Workflow Worker
+console.log('🔄 Initializing Workflow Worker...');
 require('./queues/workflow.worker');
+
 
 // Verify Redis Connection before starting
 const redisConnection = require('./config/redis');

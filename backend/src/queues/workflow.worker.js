@@ -23,11 +23,13 @@ const emitUpdate = (userId, event, payload) => {
   }
 };
 
+console.log('👷 Workflow Worker started and listening for jobs...');
+
 const processWorkflow = async (job) => {
   const { userId, executionId, workflowId, steps, initialInput } = job.data;
   let previousOutput = initialInput || '';
 
-  console.log(`[WORKER] Starting Job ${job.id} | Execution: ${executionId}`);
+  console.log(`[WORKER] 📥 Job Received: ${job.id} | Execution: ${executionId}`);
 
   try {
     // Update execution status
@@ -37,6 +39,7 @@ const processWorkflow = async (job) => {
       .eq('id', executionId);
 
     emitUpdate(userId, 'workflow_started', { executionId, workflowId });
+
 
     // Process each step sequentially
     for (const step of steps) {
@@ -178,11 +181,12 @@ const worker = new Worker('workflow-execution', processWorkflow, {
 });
 
 worker.on('completed', (job) => {
-  console.log(`Job ${job.id} has completed!`);
+  console.log(`[WORKER] ✅ Job Completed: ${job.id}`);
 });
 
 worker.on('failed', (job, err) => {
-  console.log(`Job ${job.id} has failed with ${err.message}`);
+  console.log(`[WORKER] ❌ Job Failed: ${job.id} | Error: ${err.message}`);
 });
+
 
 module.exports = worker;

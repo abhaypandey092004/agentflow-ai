@@ -66,6 +66,25 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// Worker health check
+app.get("/api/health/worker", (req, res) => {
+  try {
+    const worker = require("./queues/workflow.worker");
+    res.status(200).json({
+      status: "ok",
+      worker_initialized: !!worker,
+      worker_running: worker.isRunning(),
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: "error",
+      message: "Worker not initialized",
+      error: err.message
+    });
+  }
+});
+
+
 // Routes
 const agentRoutes = require("./routes/agent.routes");
 const workflowRoutes = require("./routes/workflow.routes");

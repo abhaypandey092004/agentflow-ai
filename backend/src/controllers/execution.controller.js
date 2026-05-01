@@ -53,7 +53,39 @@ const getExecutionById = async (req, res, next) => {
   }
 };
 
+
+const executeWorkflow = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { input = "" } = req.body || {};
+    const { runWorkflow } = require('../services/workflowRunner.service');
+    
+    console.log(`[CONTROLLER] Initiating workflow ${id} for user ${req.user.id}`);
+    
+    const execution = await runWorkflow(req.user.id, id, input);
+    
+    res.status(202).json({ 
+      message: 'Workflow execution started', 
+      executionId: execution.id 
+    });
+  } catch (err) {
+    console.error(`[CONTROLLER] Execution failed for workflow ${req.params.id}:`, err.message);
+    
+    if (err.message === 'Workflow not found or access denied') {
+      return res.status(404).json({ error: err.message });
+    }
+    if (err.message === 'Workflow has no steps to execute') {
+      return res.status(400).json({ error: err.message });
+    }
+    
+    // For other errors, return a clean message to frontend but log the details
+    res.status(500).json({ error: 'Failed to execute workflow. Please try again.' });
+  }
+};
+
 module.exports = {
   getAllExecutions,
-  getExecutionById
+  getExecutionById,
+  executeWorkflow
 };
+

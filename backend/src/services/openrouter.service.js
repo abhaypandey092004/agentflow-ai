@@ -37,17 +37,27 @@ async function runAI(userId, prompt, systemPrompt = "You are a helpful AI assist
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error("OpenRouter Error:", errorData);
+      const errorData = await response.json().catch(() => ({}));
+      console.error("[OPENROUTER ERROR] Status:", response.status, "Details:", JSON.stringify(errorData));
+      
+      if (response.status === 401) {
+        throw new Error("AI service authentication failed. Please check configuration.");
+      }
+      if (response.status === 429) {
+        throw new Error("AI service rate limit exceeded. Please try again later.");
+      }
+      
       throw new Error("AI Synthesis disruption. Please try again later.");
     }
 
     const data = await response.json();
-    const resultText = data.choices[0]?.message?.content || "";
+    const resultText = data.choices?.[0]?.message?.content || "";
     
     if (!resultText) {
+      console.error("[OPENROUTER ERROR] Empty response content:", JSON.stringify(data));
       throw new Error("AI failed to generate a response. Please try again.");
     }
+
 
     // Log AI execution in audit_logs
     await supabase.from('audit_logs').insert({

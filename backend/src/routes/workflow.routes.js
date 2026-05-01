@@ -1,9 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const workflowController = require('../controllers/workflow.controller');
+const executionController = require('../controllers/execution.controller');
 const authMiddleware = require('../middleware/authMiddleware');
 const validate = require('../middleware/validate');
 const { createWorkflowSchema, updateWorkflowSchema } = require('../utils/validators');
+const rateLimit = require('express-rate-limit');
+const aiValidator = require('../middleware/aiValidator');
 
 // All workflow routes are protected
 router.use(authMiddleware);
@@ -13,9 +16,6 @@ router.get('/:id', workflowController.getWorkflowById);
 router.post('/', validate(createWorkflowSchema), workflowController.createWorkflow);
 router.put('/:id', validate(updateWorkflowSchema), workflowController.updateWorkflow);
 router.delete('/:id', workflowController.deleteWorkflow);
-const rateLimit = require('express-rate-limit');
-
-const aiValidator = require('../middleware/aiValidator');
 
 // Rate limiting for workflow execution (AI calls are expensive)
 const runLimiter = rateLimit({
@@ -27,6 +27,6 @@ const runLimiter = rateLimit({
   keyGenerator: (req) => req.user.id
 });
 
-router.post('/:id/run', aiValidator, runLimiter, workflowController.runWorkflowEndpoint);
+router.post('/:id/run', aiValidator, runLimiter, executionController.executeWorkflow);
 
 module.exports = router;
