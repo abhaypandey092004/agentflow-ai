@@ -19,6 +19,7 @@ import History from './pages/History';
 import Execution from './pages/Execution';
 import Templates from './pages/Templates';
 import Documents from './pages/Documents';
+import AgentRunner from './pages/AgentRunner';
 
 import { Toaster } from 'react-hot-toast';
 
@@ -39,7 +40,7 @@ function App() {
 
   return (
     <>
-      <Toaster 
+      <Toaster
         position="top-right"
         toastOptions={{
           style: {
@@ -50,9 +51,11 @@ function App() {
           },
         }}
       />
+
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<Landing />} />
+
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
@@ -62,15 +65,25 @@ function App() {
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
             <Route path="/dashboard" element={<Dashboard />} />
+
+            {/* Agents */}
+            <Route path="/agents" element={<Agents />} />
+
+            {/* Workflows */}
             <Route path="/workflows" element={<Workflows />} />
             <Route path="/workflows/builder" element={<WorkflowBuilder />} />
             <Route path="/workflows/builder/:id" element={<WorkflowBuilder />} />
+
+            {/* History */}
             <Route path="/history" element={<History />} />
             <Route path="/history/:id" element={<Execution />} />
+
+            {/* Other pages */}
             <Route path="/templates" element={<Templates />} />
             <Route path="/documents" element={<Documents />} />
           </Route>
         </Route>
+        <Route path="/agent-runner" element={<AgentRunner />} />
 
         {/* Catch all */}
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

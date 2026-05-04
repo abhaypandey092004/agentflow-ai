@@ -1,6 +1,6 @@
 import { supabase } from "./supabase";
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 const normalizeEndpoint = (endpoint) => {
   if (endpoint.startsWith("/api")) return endpoint;
@@ -8,9 +8,11 @@ const normalizeEndpoint = (endpoint) => {
 };
 
 export const apiRequest = async (endpoint, options = {}) => {
-  const { data: { session } } = await supabase.auth.getSession();
-  const token = session?.access_token;
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
+  const token = session?.access_token;
   const isFormData = options.body instanceof FormData;
 
   const headers = {
@@ -22,19 +24,10 @@ export const apiRequest = async (endpoint, options = {}) => {
   const response = await fetch(`${API_BASE_URL}${normalizeEndpoint(endpoint)}`, {
     ...options,
     headers,
-    credentials: "include",
   });
 
-  if (response.status === 401 || response.status === 403) {
-    console.warn("Authentication failure. Redirecting to login...");
-    localStorage.removeItem("token");
-    localStorage.removeItem("access_token");
-    if (!window.location.pathname.includes("/login")) {
-      window.location.href = "/login?expired=true";
-    }
-  }
-
   let data = null;
+
   try {
     data = await response.json();
   } catch {
@@ -42,7 +35,15 @@ export const apiRequest = async (endpoint, options = {}) => {
   }
 
   if (!response.ok) {
-    const errorMsg = data?.error || data?.message || `API Error: ${response.status}`;
+    const errorMsg =
+      data?.error || data?.message || `API Error: ${response.status}`;
+
+    console.error("API Error:", {
+      endpoint,
+      status: response.status,
+      message: errorMsg,
+    });
+
     throw new Error(errorMsg);
   }
 

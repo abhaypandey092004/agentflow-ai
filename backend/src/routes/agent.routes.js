@@ -14,4 +14,5 @@ router.post('/', validate(createAgentSchema), agentController.createAgent);
 router.put('/:id', validate(updateAgentSchema), agentController.updateAgent);
 router.delete('/:id', agentController.deleteAgent);
 
+router.post('/simple-run', agentController.simpleRunAgent);
 module.exports = router;
