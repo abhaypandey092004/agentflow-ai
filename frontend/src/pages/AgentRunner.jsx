@@ -3,6 +3,7 @@ import { Bot, Sparkles, ArrowLeft, FileText, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import toast from "react-hot-toast";
+import jsPDF from "jspdf";
 
 const AgentRunner = () => {
   const navigate = useNavigate();
@@ -11,18 +12,18 @@ const AgentRunner = () => {
   const [prompt, setPrompt] = useState("");
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [downloading, setDownloading] = useState(false);
 
   const normalizeOutput = (value) => {
     if (!value) return "";
-
     if (typeof value === "string") return value.trim();
-
-    if (typeof value === "object") {
-      return JSON.stringify(value, null, 2);
-    }
-
+    if (typeof value === "object") return JSON.stringify(value, null, 2);
     return String(value).trim();
+  };
+
+  const safeFileName = () => {
+    return (agentName.trim() || "agent-output")
+      .replace(/[^a-z0-9]/gi, "-")
+      .toLowerCase();
   };
 
   const handleRun = async (e) => {
@@ -61,14 +62,16 @@ const AgentRunner = () => {
     } catch (err) {
       console.error("Agent run error:", err);
       toast.error(
-        err?.response?.data?.message || err.message || "Failed to generate output"
+        err?.response?.data?.message ||
+          err.message ||
+          "Failed to generate output"
       );
     } finally {
       setLoading(false);
     }
   };
 
-  const downloadFile = async (type) => {
+  const downloadPdf = () => {
     const cleanOutput = normalizeOutput(output);
 
     if (!cleanOutput || cleanOutput === "null") {
@@ -76,60 +79,78 @@ const AgentRunner = () => {
       return;
     }
 
-    setDownloading(true);
+    const doc = new jsPDF("p", "mm", "a4");
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
 
-    try {
-      const response = await api.post(
-        `/export/${type}`,
-        {
-          title: agentName.trim() || "agent-output",
-          content: cleanOutput,
-        },
-        {
-          responseType: "blob",
-        }
-      );
+    const margin = 14;
+    let y = 20;
 
-      const contentType = response.headers?.["content-type"] || "";
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(18);
+    doc.text(agentName.trim() || "Agent Output", margin, y);
 
-      if (contentType.includes("application/json")) {
-        const text = await response.data.text();
-        const json = JSON.parse(text);
-        throw new Error(json.message || json.error || "Export failed");
+    y += 10;
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, y);
+
+    y += 12;
+
+    doc.setFontSize(11);
+    const lines = doc.splitTextToSize(cleanOutput, pageWidth - margin * 2);
+
+    lines.forEach((line) => {
+      if (y > pageHeight - 15) {
+        doc.addPage();
+        y = 20;
       }
 
-      const blob = new Blob([response.data], {
-        type:
-          type === "pdf"
-            ? "application/pdf"
-            : "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      });
+      doc.text(line, margin, y);
+      y += 7;
+    });
 
-      if (!blob.size) {
-        throw new Error("Downloaded file is empty");
-      }
+    doc.save(`${safeFileName()}.pdf`);
+    toast.success("PDF downloaded");
+  };
 
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
+  const downloadDoc = () => {
+    const cleanOutput = normalizeOutput(output);
 
-      const safeName = (agentName.trim() || "agent-output")
-        .replace(/[^a-z0-9]/gi, "-")
-        .toLowerCase();
-
-      link.href = url;
-      link.download = `${safeName}.${type}`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-
-      window.URL.revokeObjectURL(url);
-      toast.success(`${type.toUpperCase()} downloaded`);
-    } catch (err) {
-      console.error("Download error:", err);
-      toast.error(err.message || "Download failed");
-    } finally {
-      setDownloading(false);
+    if (!cleanOutput || cleanOutput === "null") {
+      toast.error("Output empty hai. Pehle agent run karo.");
+      return;
     }
+
+    const html = `
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>${agentName.trim() || "Agent Output"}</title>
+        </head>
+        <body>
+          <h1>${agentName.trim() || "Agent Output"}</h1>
+          <pre style="font-family: Arial; white-space: pre-wrap;">${cleanOutput}</pre>
+        </body>
+      </html>
+    `;
+
+    const blob = new Blob([html], {
+      type: "application/msword",
+    });
+
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = `${safeFileName()}.doc`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+
+    window.URL.revokeObjectURL(url);
+    toast.success("DOC downloaded");
   };
 
   return (
@@ -212,21 +233,19 @@ const AgentRunner = () => {
 
             <div className="flex gap-3">
               <button
-                onClick={() => downloadFile("pdf")}
-                disabled={downloading}
-                className="flex items-center gap-2 rounded-xl bg-red-500/10 px-4 py-2 text-sm font-bold text-red-300 hover:bg-red-500/20 disabled:opacity-60"
+                onClick={downloadPdf}
+                className="flex items-center gap-2 rounded-xl bg-red-500/10 px-4 py-2 text-sm font-bold text-red-300 hover:bg-red-500/20"
               >
                 <FileText size={16} />
                 PDF
               </button>
 
               <button
-                onClick={() => downloadFile("docx")}
-                disabled={downloading}
-                className="flex items-center gap-2 rounded-xl bg-blue-500/10 px-4 py-2 text-sm font-bold text-blue-300 hover:bg-blue-500/20 disabled:opacity-60"
+                onClick={downloadDoc}
+                className="flex items-center gap-2 rounded-xl bg-blue-500/10 px-4 py-2 text-sm font-bold text-blue-300 hover:bg-blue-500/20"
               >
                 <Download size={16} />
-                DOCX
+                DOC
               </button>
             </div>
           </div>
