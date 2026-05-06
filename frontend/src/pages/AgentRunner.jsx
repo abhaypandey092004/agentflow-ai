@@ -13,6 +13,18 @@ const AgentRunner = () => {
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
+  const normalizeOutput = (value) => {
+    if (!value) return "";
+
+    if (typeof value === "string") return value.trim();
+
+    if (typeof value === "object") {
+      return JSON.stringify(value, null, 2);
+    }
+
+    return String(value).trim();
+  };
+
   const handleRun = async (e) => {
     e.preventDefault();
 
@@ -35,10 +47,11 @@ const AgentRunner = () => {
         prompt: prompt.trim(),
       });
 
-      const generatedOutput =
-        data?.output || data?.result || data?.content || data?.message || "";
+      const generatedOutput = normalizeOutput(
+        data?.output || data?.result || data?.content || data?.message
+      );
 
-      if (!generatedOutput) {
+      if (!generatedOutput || generatedOutput === "null") {
         toast.error("No output generated");
         return;
       }
@@ -56,8 +69,10 @@ const AgentRunner = () => {
   };
 
   const downloadFile = async (type) => {
-    if (!output || output === "null") {
-      toast.error("Generate output first");
+    const cleanOutput = normalizeOutput(output);
+
+    if (!cleanOutput || cleanOutput === "null") {
+      toast.error("Output empty hai. Pehle agent run karo.");
       return;
     }
 
@@ -67,20 +82,20 @@ const AgentRunner = () => {
       const response = await api.post(
         `/export/${type}`,
         {
-          title: agentName || "agent-output",
-          content: output,
+          title: agentName.trim() || "agent-output",
+          content: cleanOutput,
         },
         {
           responseType: "blob",
         }
       );
 
-      const contentType = response.headers["content-type"];
+      const contentType = response.headers?.["content-type"] || "";
 
-      if (contentType && contentType.includes("application/json")) {
+      if (contentType.includes("application/json")) {
         const text = await response.data.text();
         const json = JSON.parse(text);
-        throw new Error(json.message || "Export failed");
+        throw new Error(json.message || json.error || "Export failed");
       }
 
       const blob = new Blob([response.data], {
@@ -97,7 +112,7 @@ const AgentRunner = () => {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
 
-      const safeName = (agentName || "agent-output")
+      const safeName = (agentName.trim() || "agent-output")
         .replace(/[^a-z0-9]/gi, "-")
         .toLowerCase();
 
@@ -190,7 +205,7 @@ const AgentRunner = () => {
         </form>
       </div>
 
-      {output && (
+      {output && output !== "null" && (
         <div className="glass-card rounded-3xl p-8 border border-white/10">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <h2 className="text-2xl font-black text-white">Output</h2>
