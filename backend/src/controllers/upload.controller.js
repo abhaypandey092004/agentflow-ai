@@ -1,69 +1,109 @@
-const supabase = require('../config/supabase');
-const fs = require('fs');
-const pdfParse = require('pdf-parse');
-const mammoth = require('mammoth');
+const supabase = require("../config/supabase");
+const fs = require("fs");
+const pdfParse = require("pdf-parse");
+const mammoth = require("mammoth");
 
 const uploadFile = async (req, res, next) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      return res.status(400).json({
+        error: "No file uploaded",
+      });
     }
 
     const file = req.file;
-    
-    // 0. Magic Byte Validation (Basic)
-    const bufferHead = fs.readFileSync(file.path, { start: 0, end: 3 });
-    const isPDF = bufferHead.toString('hex') === '25504446'; // %PDF
-    if (file.mimetype === 'application/pdf' && !isPDF) {
-      fs.unlinkSync(file.path);
-      return res.status(400).json({ error: 'File signature mismatch (Invalid PDF)' });
+
+    // FILE SIZE VALIDATION
+    if (file.size > 10 * 1024 * 1024) {
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+
+      return res.status(400).json({
+        error: "Max file size is 10MB",
+      });
     }
 
-    const fileExt = file.originalname.split('.').pop().replace(/[^a-z0-9]/gi, ''); // Sanitize ext
-    const fileName = `${req.user.id}-${Date.now()}.${fileExt}`;
-    const filePath = `user_uploads/${fileName}`;
+    // ALLOWED TYPES
+    const allowedMimeTypes = [
+      "application/pdf",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
+    ];
 
-    // Read file buffer
+    if (!allowedMimeTypes.includes(file.mimetype)) {
+      if (fs.existsSync(file.path)) {
+        fs.unlinkSync(file.path);
+      }
+
+      return res.status(400).json({
+        error: "Only PDF, DOCX, and TXT files are allowed",
+      });
+    }
+
+    // FILE EXTENSION
+    const fileExt = file.originalname
+      .split(".")
+      .pop()
+      .toLowerCase()
+      .replace(/[^a-z0-9]/gi, "");
+
+    // SAFE FILE NAME
+    const safeName = file.originalname.replace(/[^a-z0-9.]/gi, "_");
+
+    const fileName = `${req.user.id}-${Date.now()}.${fileExt}`;
+
+    const storagePath = `user_uploads/${fileName}`;
+
+    // READ FILE BUFFER
     const fileBuffer = fs.readFileSync(file.path);
 
-    // Upload to Supabase Storage
-    const { data: storageData, error: storageError } = await supabase.storage
-      .from('documents')
-      .upload(filePath, fileBuffer, {
+    // UPLOAD TO SUPABASE STORAGE
+    const { error: storageError } = await supabase.storage
+      .from("documents")
+      .upload(storagePath, fileBuffer, {
         contentType: file.mimetype,
-        upsert: false
+        upsert: false,
       });
 
     if (storageError) {
-      throw new Error(`Storage upload failed: ${storageError.message}`);
+      throw new Error(storageError.message);
     }
 
-    // Insert into uploaded_files table
-    const { data: dbData, error: dbError } = await supabase
-      .from('uploaded_files')
+    // SAVE DB RECORD
+    const { data, error: dbError } = await supabase
+      .from("uploaded_files")
       .insert({
         user_id: req.user.id,
-        file_name: file.originalname.replace(/[^a-z0-9.]/gi, '_'), // Sanitize filename
-        file_url: null, // Remove public URLs for security
-        storage_path: filePath
+        file_name: safeName,
+        storage_path: storagePath,
       })
       .select()
       .single();
 
     if (dbError) {
-      // Cleanup storage if DB fails
-      await supabase.storage.from('documents').remove([filePath]);
+      await supabase.storage.from("documents").remove([storagePath]);
+
       throw dbError;
     }
 
-    // Clean up local temp file
-    fs.unlinkSync(file.path);
+    // DELETE TEMP FILE
+    if (fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
 
-    res.status(201).json(dbData);
+    return res.status(201).json({
+      success: true,
+      message: "File uploaded successfully",
+      file: data,
+    });
   } catch (err) {
+    console.error("UPLOAD ERROR:", err);
+
     if (req.file && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
+
     next(err);
   }
 };
@@ -72,57 +112,85 @@ const parseDocument = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // Fetch file metadata
-    const { data: file, error: dbError } = await supabase
-      .from('uploaded_files')
-      .select('storage_path')
-      .eq('id', id)
-      .eq('user_id', req.user.id)
+    const { data: file, error } = await supabase
+      .from("uploaded_files")
+      .select("*")
+      .eq("id", id)
+      .eq("user_id", req.user.id)
       .single();
 
-    if (dbError || !file) {
-      return res.status(404).json({ error: 'File not found' });
+    if (error || !file) {
+      return res.status(404).json({
+        error: "File not found",
+      });
     }
 
-    // Download file buffer from storage
-    const { data: fileData, error: downloadError } = await supabase.storage
-      .from('documents')
-      .download(file.storage_path);
+    // DOWNLOAD FROM STORAGE
+    const { data: fileData, error: downloadError } =
+      await supabase.storage
+        .from("documents")
+        .download(file.storage_path);
 
-    if (downloadError) throw new Error(`Download failed: ${downloadError.message}`);
+    if (downloadError) {
+      throw new Error(downloadError.message);
+    }
 
     const arrayBuffer = await fileData.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    
-    let parsedText = '';
-    const fileExt = file.storage_path.split('.').pop().toLowerCase();
 
-    if (fileExt === 'pdf') {
+    const buffer = Buffer.from(arrayBuffer);
+
+    let parsedText = "";
+
+    const ext = file.storage_path.split(".").pop().toLowerCase();
+
+    // PDF
+    if (ext === "pdf") {
       try {
-        // Fix for potential import issues with pdf-parse
-        const pdf = typeof pdfParse === 'function' ? pdfParse : pdfParse.default;
-        const pdfData = await pdf(buffer);
+        const pdfData = await pdfParse(buffer);
         parsedText = pdfData.text;
-      } catch (parseErr) {
-        console.error('PDF Parse Error:', parseErr);
-        return res.status(400).json({ error: 'Failed to parse PDF document. It might be encrypted or corrupted.' });
+      } catch (pdfErr) {
+        console.error(pdfErr);
+
+        return res.status(400).json({
+          error: "Failed to parse PDF",
+        });
       }
-    } else if (fileExt === 'docx') {
-      try {
-        const docxData = await mammoth.extractRawText({ buffer });
-        parsedText = docxData.value;
-      } catch (parseErr) {
-        console.error('DOCX Parse Error:', parseErr);
-        return res.status(400).json({ error: 'Failed to parse DOCX document.' });
-      }
-    } else if (fileExt === 'txt') {
-      parsedText = buffer.toString('utf-8');
-    } else {
-      return res.status(400).json({ error: 'Unsupported file format for parsing' });
     }
 
-    res.json({ text: parsedText });
+    // DOCX
+    else if (ext === "docx") {
+      try {
+        const docxData = await mammoth.extractRawText({
+          buffer,
+        });
+
+        parsedText = docxData.value;
+      } catch (docErr) {
+        console.error(docErr);
+
+        return res.status(400).json({
+          error: "Failed to parse DOCX",
+        });
+      }
+    }
+
+    // TXT
+    else if (ext === "txt") {
+      parsedText = buffer.toString("utf-8");
+    }
+
+    else {
+      return res.status(400).json({
+        error: "Unsupported file type",
+      });
+    }
+
+    return res.json({
+      success: true,
+      text: parsedText || "No text found",
+    });
   } catch (err) {
+    console.error("PARSE ERROR:", err);
     next(err);
   }
 };
@@ -131,45 +199,36 @@ const deleteFile = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    // 1. Verify ownership and get storage path
-    const { data: file, error: fetchError } = await supabase
-      .from('uploaded_files')
-      .select('storage_path, file_name')
-      .eq('id', id)
-      .eq('user_id', req.user.id)
+    const { data: file, error } = await supabase
+      .from("uploaded_files")
+      .select("*")
+      .eq("id", id)
+      .eq("user_id", req.user.id)
       .single();
 
-    if (fetchError || !file) {
-      return res.status(404).json({ error: 'File not found or access denied' });
+    if (error || !file) {
+      return res.status(404).json({
+        error: "File not found",
+      });
     }
 
-    // 2. Delete from Supabase Storage
-    const { error: storageError } = await supabase.storage
-      .from('documents')
+    // DELETE STORAGE
+    await supabase.storage
+      .from("documents")
       .remove([file.storage_path]);
 
-    if (storageError) {
-      console.error('Storage deletion failed:', storageError);
-      // Continue anyway to clean up database
-    }
-
-    // 3. Delete from database
-    const { error: dbError } = await supabase
-      .from('uploaded_files')
+    // DELETE DB
+    await supabase
+      .from("uploaded_files")
       .delete()
-      .eq('id', id);
+      .eq("id", id);
 
-    if (dbError) throw dbError;
-
-    // 4. Log audit
-    await supabase.from('audit_logs').insert({
-      user_id: req.user.id,
-      action: 'document_deleted',
-      details: { fileId: id, fileName: file.file_name }
+    return res.json({
+      success: true,
+      message: "File deleted successfully",
     });
-
-    res.json({ message: 'File deleted successfully' });
   } catch (err) {
+    console.error("DELETE ERROR:", err);
     next(err);
   }
 };
@@ -177,14 +236,20 @@ const deleteFile = async (req, res, next) => {
 const listFiles = async (req, res, next) => {
   try {
     const { data, error } = await supabase
-      .from('uploaded_files')
-      .select('*')
-      .eq('user_id', req.user.id)
-      .order('created_at', { ascending: false });
+      .from("uploaded_files")
+      .select("*")
+      .eq("user_id", req.user.id)
+      .order("created_at", {
+        ascending: false,
+      });
 
-    if (error) throw error;
-    res.json(data);
+    if (error) {
+      throw error;
+    }
+
+    return res.json(data);
   } catch (err) {
+    console.error("LIST ERROR:", err);
     next(err);
   }
 };
@@ -193,5 +258,5 @@ module.exports = {
   uploadFile,
   parseDocument,
   deleteFile,
-  listFiles
+  listFiles,
 };
