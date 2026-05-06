@@ -3,7 +3,6 @@ import { Bot, Sparkles, ArrowLeft, FileText, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import toast from "react-hot-toast";
-import jsPDF from "jspdf";
 
 const AgentRunner = () => {
   const navigate = useNavigate();
@@ -20,7 +19,7 @@ const AgentRunner = () => {
     return String(value).trim();
   };
 
-  const safeFileName = () => {
+  const getSafeFileName = () => {
     return (agentName.trim() || "agent-output")
       .replace(/[^a-z0-9]/gi, "-")
       .toLowerCase();
@@ -71,7 +70,7 @@ const AgentRunner = () => {
     }
   };
 
-  const downloadPdf = () => {
+  const downloadPdf = async () => {
     const cleanOutput = normalizeOutput(output);
 
     if (!cleanOutput || cleanOutput === "null") {
@@ -79,40 +78,47 @@ const AgentRunner = () => {
       return;
     }
 
-    const doc = new jsPDF("p", "mm", "a4");
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
+    try {
+      const { jsPDF } = await import("jspdf");
 
-    const margin = 14;
-    let y = 20;
+      const doc = new jsPDF("p", "mm", "a4");
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
 
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-    doc.text(agentName.trim() || "Agent Output", margin, y);
+      const margin = 15;
+      let y = 20;
 
-    y += 10;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.text(agentName.trim() || "Agent Output", margin, y);
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, y);
+      y += 10;
 
-    y += 12;
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, y);
 
-    doc.setFontSize(11);
-    const lines = doc.splitTextToSize(cleanOutput, pageWidth - margin * 2);
+      y += 12;
 
-    lines.forEach((line) => {
-      if (y > pageHeight - 15) {
-        doc.addPage();
-        y = 20;
-      }
+      doc.setFontSize(11);
+      const lines = doc.splitTextToSize(cleanOutput, pageWidth - margin * 2);
 
-      doc.text(line, margin, y);
-      y += 7;
-    });
+      lines.forEach((line) => {
+        if (y > pageHeight - 15) {
+          doc.addPage();
+          y = 20;
+        }
 
-    doc.save(`${safeFileName()}.pdf`);
-    toast.success("PDF downloaded");
+        doc.text(line, margin, y);
+        y += 7;
+      });
+
+      doc.save(`${getSafeFileName()}.pdf`);
+      toast.success("PDF downloaded");
+    } catch (err) {
+      console.error("PDF download error:", err);
+      toast.error("Failed to download PDF");
+    }
   };
 
   const downloadDoc = () => {
@@ -124,6 +130,7 @@ const AgentRunner = () => {
     }
 
     const html = `
+      <!DOCTYPE html>
       <html>
         <head>
           <meta charset="utf-8" />
@@ -131,20 +138,22 @@ const AgentRunner = () => {
         </head>
         <body>
           <h1>${agentName.trim() || "Agent Output"}</h1>
-          <pre style="font-family: Arial; white-space: pre-wrap;">${cleanOutput}</pre>
+          <pre style="font-family: Arial, sans-serif; white-space: pre-wrap; line-height: 1.5;">
+${cleanOutput}
+          </pre>
         </body>
       </html>
     `;
 
     const blob = new Blob([html], {
-      type: "application/msword",
+      type: "application/msword;charset=utf-8",
     });
 
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
 
     link.href = url;
-    link.download = `${safeFileName()}.doc`;
+    link.download = `${getSafeFileName()}.doc`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -233,6 +242,7 @@ const AgentRunner = () => {
 
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={downloadPdf}
                 className="flex items-center gap-2 rounded-xl bg-red-500/10 px-4 py-2 text-sm font-bold text-red-300 hover:bg-red-500/20"
               >
@@ -241,6 +251,7 @@ const AgentRunner = () => {
               </button>
 
               <button
+                type="button"
                 onClick={downloadDoc}
                 className="flex items-center gap-2 rounded-xl bg-blue-500/10 px-4 py-2 text-sm font-bold text-blue-300 hover:bg-blue-500/20"
               >
