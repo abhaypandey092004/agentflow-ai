@@ -3,7 +3,41 @@ const fs = require("fs");
 const pdfParse = require("pdf-parse");
 const mammoth = require("mammoth");
 
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
+const ALLOWED_MIME_TYPES = [
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+];
+
+const safeDeleteLocalFile = (filePath) => {
+  try {
+    if (filePath && fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+    }
+  } catch (err) {
+    console.error("TEMP FILE DELETE ERROR:", err.message);
+  }
+};
+
+const getSafeFileName = (fileName) => {
+  return String(fileName || "document")
+    .replace(/[^a-z0-9.]/gi, "_")
+    .toLowerCase();
+};
+
+const getFileExt = (fileName) => {
+  return String(fileName || "")
+    .split(".")
+    .pop()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/gi, "");
+};
+
 const uploadFile = async (req, res, next) => {
+  let storagePath = null;
+
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -13,52 +47,38 @@ const uploadFile = async (req, res, next) => {
 
     const file = req.file;
 
-    // FILE SIZE VALIDATION
-    if (file.size > 10 * 1024 * 1024) {
-      if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
+    if (file.size > MAX_FILE_SIZE) {
+      safeDeleteLocalFile(file.path);
 
       return res.status(400).json({
         error: "Max file size is 10MB",
       });
     }
 
-    // ALLOWED TYPES
-    const allowedMimeTypes = [
-      "application/pdf",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      "text/plain",
-    ];
-
-    if (!allowedMimeTypes.includes(file.mimetype)) {
-      if (fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
+    if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
+      safeDeleteLocalFile(file.path);
 
       return res.status(400).json({
         error: "Only PDF, DOCX, and TXT files are allowed",
       });
     }
 
-    // FILE EXTENSION
-    const fileExt = file.originalname
-      .split(".")
-      .pop()
-      .toLowerCase()
-      .replace(/[^a-z0-9]/gi, "");
+    const fileExt = getFileExt(file.originalname);
 
-    // SAFE FILE NAME
-    const safeName = file.originalname.replace(/[^a-z0-9.]/gi, "_");
+    if (!["pdf", "docx", "txt"].includes(fileExt)) {
+      safeDeleteLocalFile(file.path);
 
+      return res.status(400).json({
+        error: "Only PDF, DOCX, and TXT files are allowed",
+      });
+    }
+
+    const safeName = getSafeFileName(file.originalname);
     const fileName = `${req.user.id}-${Date.now()}.${fileExt}`;
+    storagePath = `user_uploads/${fileName}`;
 
-    const storagePath = `user_uploads/${fileName}`;
-
-    // READ FILE BUFFER
     const fileBuffer = fs.readFileSync(file.path);
 
-    // UPLOAD TO SUPABASE STORAGE
     const { error: storageError } = await supabase.storage
       .from("documents")
       .upload(storagePath, fileBuffer, {
@@ -67,15 +87,15 @@ const uploadFile = async (req, res, next) => {
       });
 
     if (storageError) {
-      throw new Error(storageError.message);
+      throw new Error(`Storage upload failed: ${storageError.message}`);
     }
 
-    // SAVE DB RECORD
     const { data, error: dbError } = await supabase
       .from("uploaded_files")
       .insert({
         user_id: req.user.id,
         file_name: safeName,
+        file_url: storagePath,
         storage_path: storagePath,
       })
       .select()
@@ -83,14 +103,10 @@ const uploadFile = async (req, res, next) => {
 
     if (dbError) {
       await supabase.storage.from("documents").remove([storagePath]);
-
       throw dbError;
     }
 
-    // DELETE TEMP FILE
-    if (fs.existsSync(file.path)) {
-      fs.unlinkSync(file.path);
-    }
+    safeDeleteLocalFile(file.path);
 
     return res.status(201).json({
       success: true,
@@ -100,8 +116,12 @@ const uploadFile = async (req, res, next) => {
   } catch (err) {
     console.error("UPLOAD ERROR:", err);
 
-    if (req.file && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+    if (storagePath) {
+      await supabase.storage.from("documents").remove([storagePath]);
+    }
+
+    if (req.file) {
+      safeDeleteLocalFile(req.file.path);
     }
 
     next(err);
@@ -125,61 +145,58 @@ const parseDocument = async (req, res, next) => {
       });
     }
 
-    // DOWNLOAD FROM STORAGE
-    const { data: fileData, error: downloadError } =
-      await supabase.storage
-        .from("documents")
-        .download(file.storage_path);
+    const { data: fileData, error: downloadError } = await supabase.storage
+      .from("documents")
+      .download(file.storage_path);
 
     if (downloadError) {
-      throw new Error(downloadError.message);
+      throw new Error(`Download failed: ${downloadError.message}`);
     }
 
     const arrayBuffer = await fileData.arrayBuffer();
-
     const buffer = Buffer.from(arrayBuffer);
 
     let parsedText = "";
+    let parseWarning = null;
 
-    const ext = file.storage_path.split(".").pop().toLowerCase();
+    const ext = getFileExt(file.storage_path);
 
-    // PDF
     if (ext === "pdf") {
       try {
         const pdfData = await pdfParse(buffer);
-        parsedText = pdfData.text;
+        parsedText = String(pdfData?.text || "").trim();
+
+        if (!parsedText) {
+          parseWarning =
+            "PDF uploaded successfully, but no selectable text was found. This PDF may be scanned or image-based.";
+        }
       } catch (pdfErr) {
-        console.error(pdfErr);
+        console.error("PDF PARSE ERROR:", pdfErr.message);
 
-        return res.status(400).json({
-          error: "Failed to parse PDF",
-        });
+        parseWarning =
+          "PDF uploaded successfully, but text extraction failed. This PDF may be scanned, encrypted, image-based, or unsupported.";
       }
-    }
-
-    // DOCX
-    else if (ext === "docx") {
+    } else if (ext === "docx") {
       try {
-        const docxData = await mammoth.extractRawText({
-          buffer,
-        });
+        const docxData = await mammoth.extractRawText({ buffer });
+        parsedText = String(docxData?.value || "").trim();
 
-        parsedText = docxData.value;
+        if (!parsedText) {
+          parseWarning = "DOCX uploaded successfully, but no text was found.";
+        }
       } catch (docErr) {
-        console.error(docErr);
+        console.error("DOCX PARSE ERROR:", docErr.message);
 
-        return res.status(400).json({
-          error: "Failed to parse DOCX",
-        });
+        parseWarning =
+          "DOCX uploaded successfully, but text extraction failed.";
       }
-    }
+    } else if (ext === "txt") {
+      parsedText = buffer.toString("utf-8").trim();
 
-    // TXT
-    else if (ext === "txt") {
-      parsedText = buffer.toString("utf-8");
-    }
-
-    else {
+      if (!parsedText) {
+        parseWarning = "TXT uploaded successfully, but file is empty.";
+      }
+    } else {
       return res.status(400).json({
         error: "Unsupported file type",
       });
@@ -187,7 +204,8 @@ const parseDocument = async (req, res, next) => {
 
     return res.json({
       success: true,
-      text: parsedText || "No text found",
+      text: parsedText || parseWarning || "No text found",
+      warning: parseWarning,
     });
   } catch (err) {
     console.error("PARSE ERROR:", err);
@@ -212,16 +230,17 @@ const deleteFile = async (req, res, next) => {
       });
     }
 
-    // DELETE STORAGE
-    await supabase.storage
-      .from("documents")
-      .remove([file.storage_path]);
+    await supabase.storage.from("documents").remove([file.storage_path]);
 
-    // DELETE DB
-    await supabase
+    const { error: dbError } = await supabase
       .from("uploaded_files")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", req.user.id);
+
+    if (dbError) {
+      throw dbError;
+    }
 
     return res.json({
       success: true,
@@ -247,7 +266,7 @@ const listFiles = async (req, res, next) => {
       throw error;
     }
 
-    return res.json(data);
+    return res.json(data || []);
   } catch (err) {
     console.error("LIST ERROR:", err);
     next(err);
