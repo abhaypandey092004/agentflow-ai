@@ -1,63 +1,107 @@
-const PDFDocument = require('pdfkit');
-const { Document, Packer, Paragraph, TextRun } = require('docx');
-const supabase = require('../config/supabase');
+const PDFDocument = require("pdfkit");
+const { Document, Packer, Paragraph, TextRun } = require("docx");
+const supabase = require("../config/supabase");
+
+const makeSafeFilename = (name, extension) => {
+  const safeName = String(name || "agent-output")
+    .replace(/[^a-z0-9]/gi, "_")
+    .toLowerCase();
+
+  return `${safeName}.${extension}`;
+};
+
+const getExportData = async (req) => {
+  const { executionId, title, content } = req.body;
+
+  if (content) {
+    return {
+      title: title || "Agent Output",
+      content,
+      executionId: null,
+    };
+  }
+
+  if (!executionId) {
+    const error = new Error("Either content or executionId is required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const { data: execution, error } = await supabase
+    .from("workflow_executions")
+    .select("result, workflows(name)")
+    .eq("id", executionId)
+    .eq("user_id", req.user.id)
+    .single();
+
+  if (error || !execution) {
+    const notFound = new Error("Execution not found or access denied");
+    notFound.statusCode = 404;
+    throw notFound;
+  }
+
+  if (!execution.result) {
+    const noOutput = new Error("No output found to export");
+    noOutput.statusCode = 400;
+    throw noOutput;
+  }
+
+  return {
+    title: execution.workflows?.name || "AI Export",
+    content: execution.result,
+    executionId,
+  };
+};
 
 const exportPdf = async (req, res, next) => {
   try {
-    const { executionId } = req.body;
-    if (!executionId) return res.status(400).json({ error: 'Execution ID is required' });
-
-    // Verify ownership and get content
-    const { data: execution, error } = await supabase
-      .from('workflow_executions')
-      .select('result, workflows(name)')
-      .eq('id', executionId)
-      .eq('user_id', req.user.id)
-      .single();
-
-    if (error || !execution) {
-      return res.status(404).json({ error: 'Execution not found or access denied' });
-    }
-
-    const content = execution.result;
-    if (!content) return res.status(400).json({ error: 'No output found to export' });
+    const exportData = await getExportData(req);
 
     const doc = new PDFDocument({ margin: 50 });
-    const sanitizedFilename = (execution.workflows?.name || 'report').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    const filename = `${sanitizedFilename}.pdf`;
-    
-    // Set headers for binary download
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Cache-Control', 'no-cache');
+    const filename = makeSafeFilename(exportData.title, "pdf");
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Cache-Control", "no-cache");
 
     doc.pipe(res);
-    
-    // Header
-    doc.fontSize(24).font('Helvetica-Bold').text('AgentFlow AI Intelligence Report', { align: 'center' });
+
+    doc
+      .fontSize(22)
+      .font("Helvetica-Bold")
+      .text(exportData.title || "AgentFlow AI Report", { align: "center" });
+
     doc.moveDown();
-    doc.fontSize(14).font('Helvetica-Bold').text(`Workflow: ${execution.workflows?.name}`, { align: 'left' });
-    doc.fontSize(10).font('Helvetica').text(`Generated on: ${new Date().toLocaleString()}`, { color: 'grey' });
-    doc.moveDown();
-    doc.rect(doc.x, doc.y, 500, 1).fill('#cbd5e1'); // Divider line
+
+    doc
+      .fontSize(10)
+      .font("Helvetica")
+      .fillColor("gray")
+      .text(`Generated on: ${new Date().toLocaleString()}`, {
+        align: "center",
+      });
+
     doc.moveDown(2);
 
-    // Body
-    doc.fontSize(12).font('Helvetica').text(content, { 
-      align: 'left',
-      lineGap: 4,
-      paragraphGap: 10
-    });
+    doc
+      .fontSize(12)
+      .font("Helvetica")
+      .fillColor("black")
+      .text(String(exportData.content), {
+        align: "left",
+        lineGap: 4,
+        paragraphGap: 8,
+      });
 
     doc.end();
 
-    // Log audit
-    await supabase.from('audit_logs').insert({
-      user_id: req.user.id,
-      action: 'export_pdf',
-      details: { executionId }
-    });
-
+    if (exportData.executionId) {
+      await supabase.from("audit_logs").insert({
+        user_id: req.user.id,
+        action: "export_pdf",
+        details: { executionId: exportData.executionId },
+      });
+    }
   } catch (err) {
     next(err);
   }
@@ -65,56 +109,54 @@ const exportPdf = async (req, res, next) => {
 
 const exportDocx = async (req, res, next) => {
   try {
-    const { executionId } = req.body;
-    if (!executionId) return res.status(400).json({ error: 'Execution ID is required' });
+    const exportData = await getExportData(req);
 
-    // Verify ownership and get content
-    const { data: execution, error } = await supabase
-      .from('workflow_executions')
-      .select('result, workflows(name)')
-      .eq('id', executionId)
-      .eq('user_id', req.user.id)
-      .single();
-
-    if (error || !execution) {
-      return res.status(404).json({ error: 'Execution not found or access denied' });
-    }
-
-    const content = execution.result;
-    if (!content) return res.status(400).json({ error: 'No output found to export' });
-
-    const paragraphs = content.split('\n').map(text => {
-      return new Paragraph({
-        children: [new TextRun(text)],
-      });
-    });
+    const paragraphs = String(exportData.content)
+      .split("\n")
+      .map(
+        (text) =>
+          new Paragraph({
+            children: [new TextRun(text || " ")],
+          })
+      );
 
     const doc = new Document({
-      sections: [{
-        properties: {},
-        children: [
-          new Paragraph({
-            children: [new TextRun({ text: execution.workflows?.name || 'AI Export', bold: true, size: 32 })],
-          }),
-          ...paragraphs
-        ],
-      }],
+      sections: [
+        {
+          properties: {},
+          children: [
+            new Paragraph({
+              children: [
+                new TextRun({
+                  text: exportData.title || "AgentFlow AI Export",
+                  bold: true,
+                  size: 32,
+                }),
+              ],
+            }),
+            ...paragraphs,
+          ],
+        },
+      ],
     });
 
     const buffer = await Packer.toBuffer(doc);
-    const filename = `${execution.workflows?.name || 'export'}.docx`;
+    const filename = makeSafeFilename(exportData.title, "docx");
 
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.send(buffer);
 
-    // Log audit
-    await supabase.from('audit_logs').insert({
-      user_id: req.user.id,
-      action: 'export_docx',
-      details: { executionId }
-    });
-
+    if (exportData.executionId) {
+      await supabase.from("audit_logs").insert({
+        user_id: req.user.id,
+        action: "export_docx",
+        details: { executionId: exportData.executionId },
+      });
+    }
   } catch (err) {
     next(err);
   }
@@ -122,5 +164,5 @@ const exportDocx = async (req, res, next) => {
 
 module.exports = {
   exportPdf,
-  exportDocx
+  exportDocx,
 };
